@@ -1,0 +1,1029 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+const TerminalPortfolio = () => {
+  const [history, setHistory] = useState([]);
+  const [commandHistory, setCommandHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const [currentInput, setCurrentInput] = useState('');
+  const [currentDir, setCurrentDir] = useState('~');
+  const inputRef = useRef(null);
+  const terminalRef = useRef(null);
+
+  const username = 'visitor';
+  const hostname = 'bassam-portfolio';
+
+  // File system structure
+  const fileSystem = {
+    '~': {
+      type: 'dir',
+      contents: {
+        'about.txt': { type: 'file', content: `Name: Bassam Walid Aljazzar
+Role: Mechatronics Engineer / Electromechanical Engineer / Robotics Engineer
+Location: Abu Dhabi, United Arab Emirates
+Nationality: Palestinian
+
+Bio:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+As a Mechatronics Engineer with 8 years of experience, I am an expert in 
+3D design, complex system analysis and modifications, and Python development. 
+I have a solid educational background and research experience as a research 
+assistant at UAE University. 
+
+I have built a Humanoid robot named "Bu Saif" and contributed to a patent 
+(US11573635) for a face mask with EMG sensors for communication. 
+
+I possess excellent communication and leadership skills and have a passion 
+for robotics and automation. I am confident that I can bring innovation, 
+quality, and creativity to any organization.
+
+Interests:
+  • Drawing
+  • 3D Designing
+  • Kung Fu
+  • Robotics
+
+Languages:
+  • Arabic (Native)
+  • English (Advanced)` },
+        
+        'skills.txt': { type: 'file', content: `Technical Skills
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3D Design & CAD:
+  • SolidWorks 3D Design       ⭐⭐⭐⭐⭐ Expert
+  • Fusion 360 3D Design       ⭐⭐⭐⭐⭐ Expert
+  • Autodesk AutoCAD           ⭐⭐⭐⭐⭐ Expert
+
+Programming & Software:
+  • Python Programming         ⭐⭐⭐⭐ Experienced
+  • ROS (Robot Operating Sys)  ⭐⭐⭐⭐ Skillful
+  • Embedded Systems           ⭐⭐⭐⭐⭐ Expert
+  • Microsoft Office           ⭐⭐⭐⭐⭐ Expert
+
+Robotics & Electronics:
+  • Robotics                   ⭐⭐⭐⭐ Experienced
+  • Electronics Hardware       ⭐⭐⭐⭐⭐ Expert
+  • Proteus                    ⭐⭐⭐⭐⭐ Expert
+
+Manufacturing & Machines:
+  • CNC Machines               ⭐⭐⭐⭐ Experienced
+  • Laser Cutting Machines     ⭐⭐⭐⭐⭐ Expert
+  • 3D Printing Machine        ⭐⭐⭐⭐⭐ Expert
+
+Specializations:
+  ✓ Mechatronics Systems Design
+  ✓ Complex System Analysis & Modifications
+  ✓ 3D Design & Prototyping
+  ✓ Robotics & Automation
+  ✓ Embedded Systems Development
+  ✓ Python Development
+  ✓ PLC Programming
+  ✓ Solar Energy Systems` },
+        
+        'contact.txt': { type: 'file', content: `Contact Information
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📧 Email:    b_aljazzar@yahoo.com
+📱 Phone:    +971 56 611 3381
+📍 Location: Abu Dhabi, United Arab Emirates
+🌐 Website:  https://gateremark.me
+
+Professional Profiles:
+  • LinkedIn:  [Add your LinkedIn]
+  • GitHub:    [Add your GitHub]
+
+Availability:
+  • Open for full-time opportunities
+  • Available for consulting projects
+  • Open to collaboration on robotics projects
+
+Response Time:
+  • Usually within 24 hours
+  • For urgent matters, please call
+
+Feel free to reach out for:
+  ✓ Job opportunities
+  ✓ Robotics & Mechatronics consulting
+  ✓ Research collaboration
+  ✓ Technical workshops & training
+  ✓ Speaking engagements` },
+        
+        'projects': {
+          type: 'dir',
+          contents: {
+            'README.md': { type: 'file', content: `My Projects & Achievements
+═══════════════════════════════════════════════════════════════════
+
+Use 'ls' to see all projects, then 'cat <filename>' to read details.
+
+Featured Projects:
+  • busaif-2020.md       - Bu Saif Humanoid Robot (Latest Version)
+  • busaif-2019.md       - Bu Saif Humanoid Robot (GITEX 2019)
+  • meta-touch.md        - Meta Touch Elevator Project
+  • shrimp-rover.md      - Shrimp Rover Robot
+  • patent.md            - US Patent for Face Mask with EMG Sensors
+  • jssr2020.md          - Social Robotics Symposium` },
+            
+            'busaif-2020.md': { type: 'file', content: `Bu Saif Humanoid Robot 2020-2021
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project Overview:
+I built a Python program for Bu Saif to perform a mini-mental state 
+examination (MMSE). The program includes a set of questions that the 
+robot Bo Saif asks the patient and automatically evaluates the answers.
+
+Technical Details:
+  • Programming: Python
+  • Natural Language Processing (NLP)
+  • Speech Recognition & Synthesis
+  • Real-time Patient Interaction
+  • Automated Response Evaluation
+  • Memory Assessment Algorithm
+
+Features:
+  ✓ Works to read attention and interaction of the person
+  ✓ Calculates response time automatically
+  ✓ Provides real-time feedback
+  ✓ Stores patient data for medical analysis
+
+Collaboration:
+  • UAE University
+  • Dubai Health Authority
+  • Focus: Treatment of elderly with cognitive functions
+
+Impact:
+This project contributes to the healthcare sector by providing an 
+innovative solution for assessing cognitive functions in elderly 
+patients, making the process more engaging and less intimidating.
+
+Status: ✅ Completed & Deployed` },
+            
+            'busaif-2019.md': { type: 'file', content: `Bu Saif Humanoid Robot 2019
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project Overview:
+Built the Humanoid Intelligent Robot "Bu Saif" from scratch, which 
+was presented at GITEX 2019 Exhibition in Dubai.
+
+Technical Specifications:
+  • NLP: Natural Language Program (Python programming)
+  • Language: Understands Arabic human text
+  • Response: Can respond to the person in front of him
+  • Head: Made from silicon, looks like human head
+  • Actuators: Inside head for realistic expressions
+  • Body: Has arms to act like a real human
+  • Movement: Can move and interact naturally
+
+Programming:
+  • Python-based control system
+  • Speech recognition & synthesis
+  • Natural language understanding
+  • Motor control algorithms
+  • Facial expression control
+
+Exhibition:
+  • Presented at GITEX 2019
+  • Location: Dubai, UAE
+  • Great public reception
+  • Media coverage
+
+Recognition:
+This project showcased the potential of humanoid robotics in 
+Arabic-speaking regions and demonstrated advanced NLP capabilities 
+for Arabic language processing.
+
+Status: ✅ Successfully Exhibited` },
+            
+            'meta-touch.md': { type: 'file', content: `Meta Touch Project 2020
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project Overview:
+Developed prototypes and a product now available in the market for 
+changing elevator touch buttons to touchless, helping avoid the 
+COVID-19 pandemic spread.
+
+Problem Statement:
+During the COVID-19 pandemic, elevator buttons became a major 
+concern for virus transmission as multiple people touch them daily.
+
+Solution:
+Created a touchless system that detects hand proximity without 
+physical contact, allowing users to select floors safely.
+
+Technical Implementation:
+  • Proximity sensors
+  • Microcontroller programming
+  • Real-time detection system
+  • Retrofit design for existing elevators
+  • Low power consumption
+  • Easy installation
+
+Features:
+  ✓ No physical contact required
+  ✓ Compatible with existing elevators
+  ✓ Fast response time
+  ✓ Hygiene-focused design
+  ✓ Cost-effective solution
+  ✓ Easy maintenance
+
+Impact:
+  • Helped reduce COVID-19 transmission
+  • Installed in multiple buildings
+  • Now commercially available
+  • Improved public health safety
+
+Market Status:
+✅ Product launched and available in market
+✅ Multiple installations completed
+✅ Positive customer feedback
+
+Status: ✅ Production & Commercial` },
+            
+            'shrimp-rover.md': { type: 'file', content: `Shrimp Rover Robot 2016
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Project Overview:
+Graduation project - A specialized robot based on technology that 
+designed certain mechanical mechanisms to overcome obstacles.
+
+Concept:
+Inspired by the movement of shrimp, this robot is designed to 
+navigate challenging terrains and overcome various obstacles.
+
+Mechanical Design:
+  • Six wheels configuration
+  • Each wheel has independent motor
+  • Advanced suspension system
+  • Flexible chassis design
+  • Can move like shrimp to overcome obstacles
+
+Features:
+  ✓ All-terrain capability
+  ✓ Obstacle avoidance
+  ✓ Independent wheel control
+  ✓ Robust mechanical structure
+  ✓ Innovative movement patterns
+
+Technical Skills Used:
+  • Mechanical design
+  • Electronics integration
+  • Motor control systems
+  • Programming
+  • 3D modeling & prototyping
+
+Academic Achievement:
+This project was selected as graduation project and demonstrated 
+the practical application of mechatronics principles in creating 
+innovative mobile robots.
+
+Status: ✅ Completed (Graduation Project)` },
+            
+            'patent.md': { type: 'file', content: `United States Patent 11573635
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Title:
+Face mask for accurate location of sensors relative to a user's face, 
+a communication enabling face mask, and a communication system 
+including the face mask.
+
+Patent Number: US11573635
+
+Description:
+Contributed to developing an innovative face mask equipped with EMG 
+(Electromyography) sensors for communication purposes.
+
+Technology:
+  • EMG (Electromyography) sensors
+  • Signal processing
+  • Communication system
+  • Accurate sensor positioning
+  • User-friendly design
+
+Applications:
+  ✓ Communication assistance
+  ✓ Medical applications
+  ✓ Accessibility solutions
+  ✓ Healthcare monitoring
+
+Innovation:
+This patent addresses the challenge of maintaining accurate sensor 
+positioning on a user's face, enabling reliable communication through 
+facial muscle movements.
+
+Official Link:
+https://patentimages.storage.googleapis.com/73/15/54/9ddd67aef63072/US11573635.pdf
+
+Status: ✅ Patent Granted
+Recognition: 🏆 US Patent Holder` },
+            
+            'jssr2020.md': { type: 'file', content: `5TH JOINT UAE SYMPOSIUM ON SOCIAL ROBOTICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Event: JSSR 2020
+Role: Organizer
+
+Responsibilities:
+I was an Organizer and was in charge of logistics at the conference.
+
+About the Event:
+This event features a multidisciplinary program that brings together 
+renowned developers, roboticists, and social scientists from across 
+the globe to discuss the state of the art in social robotics.
+
+Conference Topics:
+  • Social robotics applications
+  • Human-robot interaction
+  • AI in robotics
+  • Healthcare robotics
+  • Educational robotics
+  • Ethics in robotics
+
+Networking:
+  ✓ Connected with international experts
+  ✓ Learned about latest robotics research
+  ✓ Shared knowledge and experiences
+  ✓ Built professional relationships
+
+Skills Gained:
+  • Event management
+  • Logistics coordination
+  • International collaboration
+  • Conference organization
+  • Team leadership
+
+Official Link:
+https://conferences.uaeu.ac.ae/jssr2020/en/index.shtml
+
+Status: ✅ Successfully Organized
+Impact: 🌍 International Conference` }
+          }
+        },
+        
+        'experience': {
+          type: 'dir',
+          contents: {
+            'README.md': { type: 'file', content: `Work Experience
+═══════════════════════════════════════════════════════════════════
+
+Use 'cat <filename>' to read details about each position.
+
+Career Timeline:
+  • current-job.txt      - Mechatronics Engineer (2021-Present)
+  • research.txt         - Research Assistant (2019-2021)
+  • fadel-trading.txt    - Mechatronics Engineer (2018-2019)
+  • flash-tech.txt       - Mechatronics Engineer (2017)
+
+Total Experience: 8 Years` },
+            
+            'current-job.txt': { type: 'file', content: `Mechatronics Engineer
+Tatweer Middle East and Africa
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Duration: June 2021 - Present
+📍 Location: Abu Dhabi, United Arab Emirates
+🏢 Organization: Ministry of Interior - Manufacturing Innovation Laboratory
+
+Role Description:
+Mechatronics Engineer Consultant at the Manufacturing Innovation 
+Laboratory at the Ministry of Interior in Abu Dhabi.
+
+Key Responsibilities:
+
+✓ Contribute to developing innovative solutions for the Ministry 
+  of Interior's challenges
+
+✓ Work on preliminary designs for innovative ideas to improve 
+  efficiency and productivity
+
+✓ Utilize Python development skills to create custom software 
+  solutions for various projects
+
+✓ Develop and implement embedded systems for the Ministry's 
+  various projects
+
+✓ Hold training courses and workshops for the Ministry's employees 
+  to improve their technical skills and knowledge
+
+✓ Collaborate with cross-functional teams to ensure seamless 
+  integration of mechatronic systems and solutions
+
+✓ Stay up-to-date with the latest industry trends and advancements 
+  in mechatronics engineering to ensure the Ministry's systems and 
+  solutions are cutting-edge and efficient
+
+✓ Manage and prioritize tasks and projects effectively to ensure 
+  timely and successful completion
+
+✓ Provide technical support and guidance to the Ministry's teams 
+  and stakeholders
+
+✓ Maintain high levels of professionalism and ethical standards 
+  while carrying out duties and responsibilities
+
+Skills Applied:
+  • Python Programming
+  • Embedded Systems
+  • 3D Design & Prototyping
+  • Training & Mentoring
+  • Project Management
+  • Technical Consulting
+  • Innovation & Problem Solving
+
+Impact:
+Contributing to national security and efficiency through innovative 
+mechatronics solutions.
+
+Status: 🟢 Current Position` },
+            
+            'research.txt': { type: 'file', content: `Research Assistant
+United Arab Emirates University
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Duration: May 2019 - May 2021
+📍 Location: College of Information Technology, Al Ain, UAE
+🎓 Department: Robotics & AI Research
+
+Key Projects & Responsibilities:
+
+🤖 Bu Saif Humanoid Robot Project:
+  • In charge of the main research project about humanoid Robot 
+    called Bu-Saif
+  • Developed intelligent conversational capabilities
+  • Implemented Natural Language Processing (NLP)
+  • Created patient interaction system for cognitive assessment
+
+🏥 COVID-19 Response Projects:
+  • Developed prototypes affordably and quickly manufactured by 
+    3D printing aimed to reduce shortage of ventilators during 
+    COVID-19 pandemic
+  • Created touchless elevator button solution (Meta Touch project)
+  • Contributed to making medical facilities safer
+
+📝 Patent Contribution:
+  • Contributed to a patent (US11573635) for a face mask with EMG 
+    sensors for communication
+  • Conducted research on sensor positioning and signal processing
+
+🎓 Academic Activities:
+  • In charge of prototyping 3D designs
+  • Helped in several university events coordinating robots
+  • Mentored students on robotics projects
+
+Skills Developed:
+  • Research methodology
+  • Academic writing
+  • Robot programming (Python, ROS)
+  • 3D design & rapid prototyping
+  • Project management
+  • Technical documentation
+  • Team collaboration
+
+Publications:
+  • Patent US11573635
+  • Conference presentations
+  • Technical reports
+
+Status: ✅ Completed Successfully` },
+            
+            'fadel-trading.txt': { type: 'file', content: `Mechatronics Engineer
+Fadel Al Dhaheri General Trading
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Duration: November 2018 - April 2019
+📍 Location: Dubai, United Arab Emirates
+🏢 Industry: Trading & Maintenance
+
+Job Description:
+Maintenance and technical support for various equipment and machinery.
+
+Key Responsibilities:
+
+🪑 Massage Chairs Maintenance:
+  • Emirates maintenance for massage chairs
+  • Electrical and mechanical troubleshooting
+  • Preventive maintenance schedules
+  • Customer support and service
+
+🧸 Toy Machines Maintenance:
+  • Maintenance for toy machines
+  • Electrical system repairs
+  • Mechanical adjustments
+  • Safety inspections
+
+💻 Motherboards Maintenance:
+  • Machine maintenance for motherboards
+  • Electronic component testing
+  • Circuit troubleshooting
+  • Quality assurance
+
+Skills Applied:
+  • Electronics troubleshooting
+  • Mechanical maintenance
+  • Electrical systems
+  • Customer service
+  • Problem-solving
+  • Technical documentation
+
+Learning Outcomes:
+  • Practical maintenance experience
+  • Commercial equipment handling
+  • Customer interaction skills
+  • Time management in service industry
+
+Status: ✅ Completed` },
+            
+            'flash-tech.txt': { type: 'file', content: `Mechatronics Engineer
+Flash Tech Company
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 Duration: June 2017 - November 2017
+📍 Location: Gaza, Palestine
+🏢 Industry: Solar Energy & Automation
+
+Job Description:
+Working on solar energy systems, electrical systems, and industrial 
+automation.
+
+Key Responsibilities:
+
+☀️ Solar Energy Systems:
+  • Calculate the electrical loads of houses
+  • Install solar cells on platforms above surfaces
+  • Design and implement complete solar power systems
+  • Assemble control box for solar cells, inverters, and batteries
+
+⚡ Electrical Systems:
+  • Maintenance of automatic control systems
+  • Electrical installation and troubleshooting
+  • Monitoring and controlling maintenance costs
+
+🔧 Industrial Automation:
+  • Development of PLC machines and programming
+  • Designing maintenance strategies, procedures, and methods
+  • Implementing automated control systems
+
+Skills Applied:
+  • Solar energy system design
+  • Electrical calculations
+  • PLC programming
+  • Control systems
+  • Maintenance planning
+  • Project implementation
+
+Technical Achievements:
+  ✓ Successfully installed multiple solar systems
+  ✓ Programmed and maintained PLC machines
+  ✓ Reduced maintenance costs through preventive strategies
+
+Status: ✅ Completed (First Professional Role)` }
+          }
+        },
+        
+        'education.txt': { type: 'file', content: `Education Background
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎓 Bachelor of Science in Mechatronics Engineering
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+University: Al-Azhar University-Gaza
+Location: Gaza, Palestine
+Duration: October 2011 - May 2017
+Degree: BSc in Mechatronics Engineering
+
+About Mechatronics Engineering:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mechatronics engineering is a multidisciplinary field that combines 
+principles of mechanical, electrical, and computer engineering to 
+create complex systems that are efficient, reliable, and versatile.
+
+Graduation Project:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"Shrimp Rover Robot"
+
+Project Description:
+The graduation project explained the meaning of Mechatronics, as it 
+was a robot combining Mechanics, Electronics, and Control.
+
+Key Features:
+  • Six-wheeled robot design
+  • Independent motor control for each wheel
+  • Obstacle navigation capabilities
+  • Integration of mechanical, electrical, and control systems
+
+Core Subjects Covered:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Mechanical Engineering:
+  • Mechanics & Dynamics
+  • Machine Design
+  • Manufacturing Processes
+  • CAD & 3D Modeling
+  • Thermodynamics
+
+Electrical Engineering:
+  • Circuit Analysis
+  • Electronics
+  • Power Systems
+  • Control Systems
+  • Electrical Machines
+
+Computer Engineering:
+  • Programming (C, C++, Python)
+  • Microcontrollers
+  • Embedded Systems
+  • Robotics
+  • Automation
+
+Skills Acquired:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✓ System Integration
+  ✓ Problem Solving
+  ✓ Technical Design
+  ✓ Programming & Coding
+  ✓ Project Management
+  ✓ Team Collaboration
+  ✓ Research & Analysis
+
+Professional Development:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Throughout my career, I have continuously developed my skills through:
+  • Hands-on projects and research
+  • Professional certifications
+  • Industry workshops and training
+  • Collaboration with experts in the field
+  • Staying current with latest technologies` }
+      }
+    }
+  };
+
+  // Available commands
+  const commands = {
+    help: () => `Available Commands
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+File System Navigation:
+  ls              - List directory contents
+  cd <dir>        - Change directory
+  pwd             - Print working directory
+  cat <file>      - Display file contents
+  tree            - Display directory tree
+  cd ..           - Go to parent directory
+
+Quick Information:
+  about           - About Bassam Aljazzar
+  skills          - Technical skills & expertise
+  projects        - Projects & achievements
+  experience      - Work experience
+  education       - Educational background
+  contact         - Contact information
+
+System Commands:
+  clear           - Clear terminal screen
+  history         - Show command history
+  help            - Show this help message
+  whoami          - Display current user
+  date            - Display current date
+  echo <text>     - Print text to screen
+
+Navigation Tips:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  • Use 'ls' to see what's in current directory
+  • Use 'cd projects' to explore my projects
+  • Use 'cd experience' to see work history
+  • Use TAB key for auto-completion
+  • Use ↑↓ arrows to navigate command history
+  • Type 'cat README.md' in any directory for info
+
+Example Navigation:
+  $ cd projects      # Go to projects directory
+  $ ls               # List all projects
+  $ cat busaif-2020.md  # Read about Bu Saif robot
+
+Easter Egg:
+  Try typing 'sudo rm -rf /' 😉`,
+
+    ls: (args) => {
+      const path = args[0] || currentDir;
+      const dir = getDirectory(path);
+      
+      if (!dir || dir.type !== 'dir') {
+        return `ls: cannot access '${path}': No such file or directory`;
+      }
+      
+      const items = Object.keys(dir.contents);
+      return items.map(item => {
+        const isDir = dir.contents[item].type === 'dir';
+        return isDir ? `<span style="color: #5BCEFA; font-weight: bold;">${item}/</span>` : `<span style="color: #00ff00;">${item}</span>`;
+      }).join('  ');
+    },
+
+    cd: (args) => {
+      if (!args[0]) {
+        setCurrentDir('~');
+        return '';
+      }
+      
+      const newDir = args[0];
+      if (newDir === '..') {
+        if (currentDir !== '~') {
+          const parts = currentDir.split('/').filter(p => p !== '~');
+          parts.pop();
+          setCurrentDir(parts.length > 0 ? `~/${parts.join('/')}` : '~');
+        }
+        return '';
+      }
+      
+      const targetPath = currentDir === '~' ? `~/${newDir}` : `${currentDir}/${newDir}`;
+      const dir = getDirectory(targetPath);
+      
+      if (!dir) {
+        return `cd: ${newDir}: No such file or directory`;
+      }
+      
+      if (dir.type !== 'dir') {
+        return `cd: ${newDir}: Not a directory`;
+      }
+      
+      setCurrentDir(targetPath);
+      return '';
+    },
+
+    pwd: () => {
+      const path = currentDir.replace('~', '/home/visitor');
+      return path;
+    },
+
+    cat: (args) => {
+      if (!args[0]) {
+        return 'cat: missing file operand';
+      }
+      
+      const filePath = args[0];
+      const file = getFile(filePath);
+      
+      if (!file) {
+        return `cat: ${filePath}: No such file or directory`;
+      }
+      
+      if (file.type === 'dir') {
+        return `cat: ${filePath}: Is a directory`;
+      }
+      
+      return file.content;
+    },
+
+    tree: () => {
+      const buildTree = (obj, prefix = '', isLast = true) => {
+        const keys = Object.keys(obj.contents || {});
+        let result = '';
+        
+        keys.forEach((key, index) => {
+          const isLastItem = index === keys.length - 1;
+          const item = obj.contents[key];
+          const connector = isLastItem ? '└── ' : '├── ';
+          const isDir = item.type === 'dir';
+          
+          result += `${prefix}${connector}<span style="color: ${isDir ? '#5BCEFA' : '#00ff00'}; font-weight: ${isDir ? 'bold' : 'normal'}">${key}${isDir ? '/' : ''}</span>\n`;
+          
+          if (isDir && item.contents) {
+            const newPrefix = prefix + (isLastItem ? '    ' : '│   ');
+            result += buildTree(item, newPrefix, isLastItem);
+          }
+        });
+        
+        return result;
+      };
+      
+      const dir = getDirectory(currentDir);
+      return `<span style="color: #5BCEFA; font-weight: bold;">${currentDir}/</span>\n` + buildTree(dir);
+    },
+
+    clear: () => {
+      setHistory([]);
+      return null;
+    },
+
+    whoami: () => username,
+
+    date: () => new Date().toString(),
+
+    echo: (args) => args.join(' '),
+
+    history: () => commandHistory.map((cmd, i) => `  ${i + 1}  ${cmd}`).join('\n'),
+
+    about: () => commands.cat(['about.txt']),
+    skills: () => commands.cat(['skills.txt']),
+    contact: () => commands.cat(['contact.txt']),
+    education: () => commands.cat(['education.txt']),
+    projects: () => 'Navigate to projects: cd projects && ls\nThen read any project: cat <project-file.md>',
+    experience: () => 'Navigate to experience: cd experience && ls\nThen read any position: cat <position-file.txt>',
+
+    sudo: (args) => {
+      const fullCmd = args.join(' ');
+      if (fullCmd === 'rm -rf /') {
+        return '😱 Nice try! But I\'m not going to delete my portfolio!\n💡 This is why you should NEVER run "sudo rm -rf /" on a real system!';
+      }
+      if (fullCmd.includes('make') && fullCmd.includes('sandwich')) {
+        return '🥪 Okay! Here\'s your sandwich. But first, let me tell you about my robotics projects...';
+      }
+      return '[sudo] password for visitor: \nSorry, you don\'t have sudo privileges here 😄';
+    },
+
+    'rm': () => 'rm: cannot remove files - this is a read-only portfolio!',
+    'mkdir': () => 'mkdir: cannot create directory - this is a read-only portfolio!',
+    'touch': () => 'touch: cannot create file - this is a read-only portfolio!',
+    'nano': () => 'nano: command not found. Try \'cat\' to read files!',
+    'vim': () => 'vim: command not found. Also, you can\'t escape vim even in a browser 😉',
+    'emacs': () => 'emacs: command not found. Try \'cat\' instead!',
+  };
+
+  const getDirectory = (path) => {
+    if (path === '~') return fileSystem['~'];
+    
+    const parts = path.replace('~/', '').replace('~', '').split('/').filter(p => p);
+    let current = fileSystem['~'];
+    
+    for (const part of parts) {
+      if (!current.contents || !current.contents[part]) {
+        return null;
+      }
+      current = current.contents[part];
+    }
+    
+    return current;
+  };
+
+  const getFile = (filename) => {
+    const dir = getDirectory(currentDir);
+    if (!dir || !dir.contents) return null;
+    return dir.contents[filename];
+  };
+
+  const executeCommand = (input) => {
+    const trimmedInput = input.trim();
+    if (!trimmedInput) return;
+
+    setCommandHistory(prev => [...prev, trimmedInput]);
+    setHistoryIndex(-1);
+
+    const [cmd, ...args] = trimmedInput.split(' ');
+    const command = commands[cmd];
+
+    const output = command ? command(args) : `bash: ${cmd}: command not found\nType 'help' for available commands.`;
+
+    setHistory(prev => [
+      ...prev,
+      { type: 'input', content: trimmedInput, dir: currentDir },
+      ...(output !== null ? [{ type: 'output', content: output }] : [])
+    ]);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      executeCommand(currentInput);
+      setCurrentInput('');
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (commandHistory.length > 0) {
+        const newIndex = historyIndex === -1 ? commandHistory.length - 1 : Math.max(0, historyIndex - 1);
+        setHistoryIndex(newIndex);
+        setCurrentInput(commandHistory[newIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex !== -1) {
+        const newIndex = historyIndex + 1;
+        if (newIndex >= commandHistory.length) {
+          setHistoryIndex(-1);
+          setCurrentInput('');
+        } else {
+          setHistoryIndex(newIndex);
+          setCurrentInput(commandHistory[newIndex]);
+        }
+      }
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const availableCommands = Object.keys(commands);
+      const matches = availableCommands.filter(cmd => cmd.startsWith(currentInput.toLowerCase()));
+      if (matches.length === 1) {
+        setCurrentInput(matches[0]);
+      } else if (matches.length > 1) {
+        setHistory(prev => [...prev, 
+          { type: 'input', content: currentInput, dir: currentDir },
+          { type: 'output', content: matches.join('  ') }
+        ]);
+      }
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      commands.clear();
+    }
+  };
+
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    
+    // Welcome message
+    setHistory([
+      { type: 'output', content: `<pre style="color: #00ff00; line-height: 1.2; font-size: 0.85em;">
+ ██████╗  █████╗ ███████╗███████╗ █████╗ ███╗   ███╗     █████╗ ██╗         ██╗ █████╗ ███████╗███████╗ █████╗ ██████╗ 
+ ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗████╗ ████║    ██╔══██╗██║         ██║██╔══██╗╚══███╔╝╚══███╔╝██╔══██╗██╔══██╗
+ ██████╔╝███████║███████╗███████╗███████║██╔████╔██║    ███████║██║         ██║███████║  ███╔╝   ███╔╝ ███████║██████╔╝
+ ██╔══██╗██╔══██║╚════██║╚════██║██╔══██║██║╚██╔╝██║    ██╔══██║██║    ██   ██║██╔══██║ ███╔╝   ███╔╝  ██╔══██║██╔══██╗
+ ██████╔╝██║  ██║███████║███████║██║  ██║██║ ╚═╝ ██║    ██║  ██║███████╗╚█████╔╝██║  ██║███████╗███████╗██║  ██║██║  ██║
+ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝    ╚═╝  ╚═╝╚══════╝ ╚════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+</pre>` },
+      { type: 'output', content: `<span style="color: #5BCEFA; font-weight: bold;">Welcome to Bassam Aljazzar's Portfolio Terminal v2.0</span>
+
+<span style="color: #F5A9B8;">Mechatronics Engineer | Robotics Specialist | Innovation Consultant</span>
+<span style="color: #00ff00;">📍 Abu Dhabi, UAE | 8 Years Experience | Patent Holder (US11573635)</span>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Type '<span style="color: #ffa500; font-weight: bold;">help</span>' to see all available commands
+Type '<span style="color: #ffa500; font-weight: bold;">ls</span>' to explore the file system
+Type '<span style="color: #ffa500; font-weight: bold;">about</span>' to learn more about me
+
+<span style="color: #888;">Tip: Use TAB for auto-completion and ↑↓ arrows for command history</span>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` }
+    ]);
+  }, []);
+
+  return (
+    <div style={{
+      backgroundColor: '#0a0a0a',
+      minHeight: '100vh',
+      color: '#00ff00',
+      fontFamily: "'Courier New', 'Monaco', monospace",
+      padding: '20px',
+      overflow: 'hidden'
+    }}>
+      <div 
+        ref={terminalRef}
+        style={{ 
+          maxWidth: '1400px', 
+          margin: '0 auto',
+          maxHeight: 'calc(100vh - 40px)',
+          overflowY: 'auto',
+          paddingBottom: '20px',
+          fontSize: '14px'
+        }}
+        onClick={() => inputRef.current?.focus()}
+      >
+        {history.map((item, index) => (
+          <div key={index} style={{ marginBottom: '8px' }}>
+            {item.type === 'input' ? (
+              <div>
+                <span style={{ color: '#5BCEFA' }}>{username}@{hostname}</span>
+                <span style={{ color: '#fff' }}>:</span>
+                <span style={{ color: '#F5A9B8' }}>{item.dir}</span>
+                <span style={{ color: '#fff' }}>$ </span>
+                <span style={{ color: '#ffa500' }}>{item.content}</span>
+              </div>
+            ) : (
+              <div 
+                style={{ 
+                  color: '#00ff00', 
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word'
+                }}
+                dangerouslySetInnerHTML={{ __html: item.content }}
+              />
+            )}
+          </div>
+        ))}
+        
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span style={{ color: '#5BCEFA' }}>{username}@{hostname}</span>
+          <span style={{ color: '#fff' }}>:</span>
+          <span style={{ color: '#F5A9B8' }}>{currentDir}</span>
+          <span style={{ color: '#fff' }}>$ </span>
+          <input
+            ref={inputRef}
+            type="text"
+            value={currentInput}
+            onChange={(e) => setCurrentInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: '#00ff00',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+              flex: 1,
+              caretColor: '#00ff00'
+            }}
+            spellCheck="false"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default TerminalPortfolio;
