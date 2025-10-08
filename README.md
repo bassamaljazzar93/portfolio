@@ -264,10 +264,7 @@ portfolio/
 ├── index.html              # Main application file
 │
 ├── README.md              # This file
-│
-└── assets/                # Optional assets folder
-    ├── images/           # Screenshots, logos
-    └── videos/           # Demo videos
+
 ```
 
 ### Virtual File System Structure
