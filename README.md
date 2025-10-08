@@ -195,23 +195,7 @@ $ cd ~
 - A modern web browser (Chrome, Firefox, Safari, Edge)
 - Basic knowledge of terminal/command-line (optional)
 
-### Installation
 
-#### Option 1: Clone and Run Locally
-
-```bash
-# Clone the repository
-git clone https://github.com/bassamaljazzar93/portfolio.git
-
-# Navigate to directory
-cd portfolio
-
-# Open in browser
-open index.html
-# or
-start index.html  # Windows
-xdg-open index.html  # Linux
-```
 
 #### Option 2: Fork and Deploy
 
