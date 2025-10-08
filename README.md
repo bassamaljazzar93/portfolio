@@ -13,7 +13,7 @@
 
 [Live Demo](https://bassamaljazzar93.github.io/portfolio/) • [LinkedIn](https://www.linkedin.com/in/bassam-aljazzar) • [Report Bug](https://github.com/bassamaljazzar93/portfolio/issues)
 
-![Terminal Demo](https://via.placeholder.com/800x400/0a0a0a/00ff00?text=Terminal+Portfolio+Demo)
+![Terminal Demo](assets/images/terminal-demo.png)
 
 </div>
 
