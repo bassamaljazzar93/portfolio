@@ -223,15 +223,171 @@
         }
 
         /* Responsive */
-        @media (max-width: 968px) {
+        @media (max-width: 1200px) {
             .main-container {
                 flex-direction: column;
             }
 
             .viewer-section {
-                flex: 0 0 40%;
+                flex: 0 0 300px;
+                min-height: 300px;
                 border-right: none;
                 border-bottom: 2px solid #00ff00;
+            }
+
+            .terminal-section {
+                flex: 1;
+                min-height: 400px;
+            }
+
+            .terminal-output {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px 15px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .header .subtitle {
+                font-size: 12px;
+            }
+
+            .nav {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                font-size: 11px;
+            }
+
+            .nav a {
+                margin: 0 5px;
+            }
+
+            .viewer-section {
+                flex: 0 0 250px;
+                min-height: 250px;
+            }
+
+            .terminal-section {
+                padding: 10px;
+            }
+
+            .terminal-box {
+                border-radius: 0;
+            }
+
+            .terminal-output {
+                padding: 15px;
+                font-size: 12px;
+            }
+
+            .terminal-input-line {
+                padding: 12px;
+                font-size: 12px;
+            }
+
+            .terminal-footer {
+                padding: 12px;
+            }
+
+            .welcome-text {
+                font-size: 10px;
+            }
+
+            #commandInput {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 18px;
+            }
+
+            .header .subtitle {
+                font-size: 11px;
+            }
+
+            .nav {
+                font-size: 10px;
+            }
+
+            .nav a {
+                margin: 2px 3px;
+            }
+
+            .viewer-section {
+                flex: 0 0 200px;
+                min-height: 200px;
+            }
+
+            .terminal-section {
+                padding: 5px;
+            }
+
+            .terminal-header {
+                padding: 8px 12px;
+            }
+
+            .terminal-title {
+                font-size: 11px;
+            }
+
+            .terminal-output {
+                padding: 12px;
+                font-size: 11px;
+            }
+
+            .terminal-input-line {
+                padding: 10px;
+                font-size: 11px;
+            }
+
+            .terminal-footer {
+                padding: 10px;
+            }
+
+            .welcome-text {
+                font-size: 9px;
+                line-height: 1.4;
+            }
+
+            #commandInput {
+                font-size: 11px;
+            }
+
+            .username, .directory, .separator {
+                font-size: 11px;
+            }
+
+            /* Make pre text smaller on mobile */
+            pre {
+                font-size: 0.5em !important;
+            }
+        }
+
+        /* Landscape mode for mobile */
+        @media (max-width: 900px) and (orientation: landscape) {
+            .main-container {
+                flex-direction: row;
+            }
+
+            .viewer-section {
+                flex: 0 0 35%;
+                border-right: 2px solid #00ff00;
+                border-bottom: none;
             }
 
             .terminal-section {
@@ -239,20 +395,30 @@
             }
         }
 
-        @media (max-width: 600px) {
-            .header {
-                flex-direction: column;
-                gap: 10px;
+        /* Very small screens */
+        @media (max-width: 320px) {
+            .header h1 {
+                font-size: 16px;
             }
 
-            .nav {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
+            .nav a {
+                font-size: 9px;
+                margin: 2px;
             }
 
             .viewer-section {
-                flex: 0 0 35%;
+                flex: 0 0 180px;
+                min-height: 180px;
+            }
+
+            .terminal-output,
+            .terminal-input-line,
+            #commandInput {
+                font-size: 10px;
+            }
+
+            .welcome-text {
+                font-size: 8px;
             }
         }
     </style>
