@@ -7,6 +7,7 @@
     <meta name="keywords" content="Mechatronics Engineer, Robotics, Automation, Python, 3D Design, Bu Saif, UAE, Abu Dhabi">
     <meta name="author" content="Bassam Walid Aljazzar">
     <title>Bassam Aljazzar - Mechatronics Engineer Portfolio</title>
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.10.76/build/spline-viewer.js"></script>
     <style>
         * {
             margin: 0;
@@ -18,17 +19,145 @@
             background-color: #0a0a0a;
             color: #00ff00;
             font-family: 'Courier New', 'Monaco', monospace;
-            padding: 20px;
-            overflow-x: hidden;
+            overflow: hidden;
+            height: 100vh;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
+        /* Header */
+        .header {
+            background-color: #0f0f0f;
+            border-bottom: 2px solid #00ff00;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #00ff00;
+            font-size: 24px;
+            margin: 0;
+        }
+
+        .header .subtitle {
+            color: #888;
             font-size: 14px;
         }
 
+        .nav {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .nav a {
+            color: #00ff00;
+            text-decoration: none;
+            margin: 0 8px;
+            cursor: pointer;
+        }
+
+        .nav a:hover {
+            color: #5BCEFA;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 70px);
+            gap: 0;
+        }
+
+        /* 3D Viewer Section (Left) */
+        .viewer-section {
+            flex: 0 0 40%;
+            background-color: #0f0f0f;
+            border-right: 2px solid #00ff00;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        spline-viewer {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Terminal Section (Right) */
+        .terminal-section {
+            flex: 1;
+            background-color: #0a0a0a;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .terminal-box {
+            background-color: #0f0f0f;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+
+        .terminal-header {
+            background-color: #1a1a1a;
+            padding: 10px 15px;
+            border-bottom: 1px solid #00ff00;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #ff5f56;
+        }
+
+        .terminal-button:nth-child(2) {
+            background-color: #ffbd2e;
+        }
+
+        .terminal-button:nth-child(3) {
+            background-color: #27c93f;
+        }
+
+        .terminal-title {
+            flex: 1;
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+        }
+
         .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .terminal-output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .terminal-output::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .terminal-output::-webkit-scrollbar-thumb {
+            background: #00ff00;
+            border-radius: 4px;
+        }
+
+        .output-line {
             margin-bottom: 8px;
             word-wrap: break-word;
         }
@@ -55,9 +184,30 @@
             color: #ffa500;
         }
 
-        .input-line {
+        .terminal-footer {
+            background-color: #1a1a1a;
+            padding: 15px;
+            border-top: 1px solid #00ff00;
+        }
+
+        .welcome-text {
+            color: #888;
+            font-size: 12px;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .welcome-text .highlight {
+            color: #ffa500;
+            font-weight: bold;
+        }
+
+        .terminal-input-line {
             display: flex;
             align-items: center;
+            padding: 15px;
+            background-color: #0a0a0a;
+            border-top: 1px solid #333;
         }
 
         #commandInput {
@@ -72,57 +222,101 @@
             margin-left: 5px;
         }
 
-        .link {
-            color: #5BCEFA;
-            text-decoration: underline;
-            cursor: pointer;
+        /* Responsive */
+        @media (max-width: 968px) {
+            .main-container {
+                flex-direction: column;
+            }
+
+            .viewer-section {
+                flex: 0 0 40%;
+                border-right: none;
+                border-bottom: 2px solid #00ff00;
+            }
+
+            .terminal-section {
+                flex: 1;
+            }
         }
 
-        .error {
-            color: #ff6b6b;
-        }
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column;
+                gap: 10px;
+            }
 
-        pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
+            .nav {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
 
-        .scroll-container {
-            max-height: calc(100vh - 100px);
-            overflow-y: auto;
-            padding-bottom: 20px;
-        }
-
-        /* Custom scrollbar */
-        .scroll-container::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        .scroll-container::-webkit-scrollbar-track {
-            background: #1a1a1a;
-        }
-
-        .scroll-container::-webkit-scrollbar-thumb {
-            background: #00ff00;
-            border-radius: 5px;
-        }
-
-        .scroll-container::-webkit-scrollbar-thumb:hover {
-            background: #00cc00;
+            .viewer-section {
+                flex: 0 0 35%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="scroll-container" id="terminalOutput">
-            <!-- Output will be inserted here -->
+    <!-- Header -->
+    <div class="header">
+        <div>
+            <h1>Bassam Walid Aljazzar</h1>
+            <div class="subtitle">Mechatronics Engineer</div>
         </div>
-        <div class="input-line">
-            <span class="username">visitor@bassam-portfolio</span>
-            <span class="separator">:</span>
-            <span class="directory" id="currentDir">~</span>
-            <span class="separator">$ </span>
-            <input type="text" id="commandInput" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div class="nav">
+            <a onclick="executeNavCommand('help')">help</a> |
+            <a onclick="executeNavCommand('about')">about</a> |
+            <a onclick="executeNavCommand('cd experience')">experience</a> |
+            <a onclick="executeNavCommand('education')">education</a> |
+            <a onclick="executeNavCommand('skills')">skills</a> |
+            <a onclick="executeNavCommand('cd projects')">projects</a> |
+            <a onclick="executeNavCommand('contact')">contact</a> |
+            <a onclick="executeNavCommand('clear')">clear</a>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- 3D Viewer Section (Left) -->
+        <div class="viewer-section">
+            <spline-viewer url="https://prod.spline.design/eBO7I-xKw00YnaYL/scene.splinecode"></spline-viewer>
+        </div>
+
+        <!-- Terminal Section (Right) -->
+        <div class="terminal-section">
+            <div class="terminal-box">
+                <!-- Terminal Header -->
+                <div class="terminal-header">
+                    <div class="terminal-button"></div>
+                    <div class="terminal-button"></div>
+                    <div class="terminal-button"></div>
+                    <div class="terminal-title">bassam@portfolio:~</div>
+                </div>
+
+                <!-- Terminal Output -->
+                <div class="terminal-output" id="terminalOutput">
+                    <!-- Output will be inserted here -->
+                </div>
+
+                <!-- Terminal Input -->
+                <div class="terminal-input-line">
+                    <span class="username">bassam@portfolio</span>
+                    <span class="separator">:</span>
+                    <span class="directory" id="currentDir">~</span>
+                    <span class="separator">$ </span>
+                    <input type="text" id="commandInput" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                </div>
+
+                <!-- Terminal Footer (Fixed Welcome Text) -->
+                <div class="terminal-footer">
+                    <div class="welcome-text">
+                        Type <span class="highlight">'help'</span> to see all available commands | 
+                        Type <span class="highlight">'ls'</span> to explore the file system<br>
+                        Tip: Use <span class="highlight">TAB</span> for auto-completion and <span class="highlight">↑↓</span> arrows for command history
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -134,7 +328,7 @@
         let historyIndex = -1;
         let currentDir = '~';
 
-        // File system
+        // File system (same as before)
         const fileSystem = {
             '~': {
                 type: 'dir',
@@ -214,7 +408,7 @@ Specializations:
 📧 Email:    b_aljazzar@yahoo.com
 📱 Phone:    +971 56 611 3381
 📍 Location: Abu Dhabi, United Arab Emirates
-🌐 Website:  https://gateremark.me
+💼 LinkedIn: https://www.linkedin.com/in/bassam-aljazzar
 
 Availability:
   • Open for full-time opportunities
@@ -442,7 +636,7 @@ Status: ✅ Completed`
             }
         };
 
-        // Commands
+        // Commands (same as before)
         const commands = {
             help: () => `Available Commands
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -468,13 +662,7 @@ System:
   history         - Show command history
   help            - Show this help
   whoami          - Display current user
-  date            - Display current date
-
-Navigation Tips:
-  • Use 'ls' to explore directories
-  • Use 'cd projects' to see projects
-  • Use TAB for auto-completion
-  • Use ↑↓ arrows for command history`,
+  date            - Display current date`,
 
             ls: (args) => {
                 const path = args[0] || currentDir;
@@ -494,9 +682,26 @@ Navigation Tips:
             },
 
             cd: (args) => {
-                if (!args[0]) {
+                if (!args[0] || args[0] === '~') {
                     currentDir = '~';
                     currentDirElement.textContent = '~';
+                    // Show welcome message when returning to home
+                    setTimeout(() => {
+                        addOutput(`<pre style="color: #00ff00; line-height: 1.2; font-size: 0.75em;">
+ ██████╗  █████╗ ███████╗███████╗ █████╗ ███╗   ███╗     █████╗ ██╗         ██╗ █████╗ ███████╗███████╗ █████╗ ██████╗ 
+ ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗████╗ ████║    ██╔══██╗██║         ██║██╔══██╗╚══███╔╝╚══███╔╝██╔══██╗██╔══██╗
+ ██████╔╝███████║███████╗███████╗███████║██╔████╔██║    ███████║██║         ██║███████║  ███╔╝   ███╔╝ ███████║██████╔╝
+ ██╔══██╗██╔══██║╚════██║╚════██║██╔══██║██║╚██╔╝██║    ██╔══██║██║    ██   ██║██╔══██║ ███╔╝   ███╔╝  ██╔══██║██╔══██╗
+ ██████╔╝██║  ██║███████║███████║██║  ██║██║ ╚═╝ ██║    ██║  ██║███████╗╚█████╔╝██║  ██║███████╗███████╗██║  ██║██║  ██║
+ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝    ╚═╝  ╚═╝╚══════╝ ╚════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+</pre>`);
+                        addOutput(`<span style="color: #5BCEFA; font-weight: bold;">Welcome to Bassam Aljazzar's Interactive Portfolio Terminal</span>
+
+<span style="color: #F5A9B8;">Mechatronics Engineer | Robotics Specialist | Innovation Consultant</span>
+<span style="color: #00ff00;">📍 Abu Dhabi, UAE | 8 Years Experience | Patent Holder (US11573635)</span>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                    }, 100);
                     return '';
                 }
                 
@@ -527,7 +732,7 @@ Navigation Tips:
                 return '';
             },
 
-            pwd: () => currentDir.replace('~', '/home/visitor'),
+            pwd: () => currentDir.replace('~', '/home/bassam'),
 
             cat: (args) => {
                 if (!args[0]) {
@@ -579,7 +784,7 @@ Navigation Tips:
                 return null;
             },
 
-            whoami: () => 'visitor',
+            whoami: () => 'bassam',
 
             date: () => new Date().toString(),
 
@@ -599,7 +804,7 @@ Navigation Tips:
                 if (fullCmd === 'rm -rf /') {
                     return '😱 Nice try! But I\'m not deleting my portfolio!';
                 }
-                return '[sudo] password for visitor: \nSorry, no sudo access here 😄';
+                return '[sudo] password for bassam: \nSorry, no sudo access here 😄';
             }
         };
 
@@ -627,10 +832,10 @@ Navigation Tips:
 
         function addOutput(content, isCommand = false, commandText = '') {
             const div = document.createElement('div');
-            div.className = 'terminal-output';
+            div.className = 'output-line';
             
             if (isCommand) {
-                div.innerHTML = `<span class="username">visitor@bassam-portfolio</span><span class="separator">:</span><span class="directory">${currentDir}</span><span class="separator">$ </span><span class="command">${commandText}</span>`;
+                div.innerHTML = `<span class="username">bassam@portfolio</span><span class="separator">:</span><span class="directory">${currentDir}</span><span class="separator">$ </span><span class="command">${commandText}</span>`;
             } else {
                 div.innerHTML = content;
             }
@@ -656,6 +861,14 @@ Navigation Tips:
             if (output !== null) {
                 addOutput(output);
             }
+        }
+
+        // Nav click handler
+        function executeNavCommand(cmd) {
+            commandInput.value = cmd;
+            executeCommand(cmd);
+            commandInput.value = '';
+            commandInput.focus();
         }
 
         // Event listeners
@@ -698,7 +911,7 @@ Navigation Tips:
 
         // Welcome message
         window.addEventListener('load', () => {
-            addOutput(`<pre style="color: #00ff00; line-height: 1.2; font-size: 0.85em;">
+            addOutput(`<pre style="color: #00ff00; line-height: 1.2; font-size: 0.75em;">
  ██████╗  █████╗ ███████╗███████╗ █████╗ ███╗   ███╗     █████╗ ██╗         ██╗ █████╗ ███████╗███████╗ █████╗ ██████╗ 
  ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗████╗ ████║    ██╔══██╗██║         ██║██╔══██╗╚══███╔╝╚══███╔╝██╔══██╗██╔══██╗
  ██████╔╝███████║███████╗███████╗███████║██╔████╔██║    ███████║██║         ██║███████║  ███╔╝   ███╔╝ ███████║██████╔╝
@@ -706,28 +919,13 @@ Navigation Tips:
  ██████╔╝██║  ██║███████║███████║██║  ██║██║ ╚═╝ ██║    ██║  ██║███████╗╚█████╔╝██║  ██║███████╗███████╗██║  ██║██║  ██║
  ╚═════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝    ╚═╝  ╚═╝╚══════╝ ╚════╝ ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
 </pre>`);
-            addOutput(`<span style="color: #5BCEFA; font-weight: bold;">Welcome to Bassam Aljazzar's Portfolio Terminal v2.0</span>
+            addOutput(`<span style="color: #5BCEFA; font-weight: bold;">Welcome to Bassam Aljazzar's Interactive Portfolio Terminal</span>
 
 <span style="color: #F5A9B8;">Mechatronics Engineer | Robotics Specialist | Innovation Consultant</span>
 <span style="color: #00ff00;">📍 Abu Dhabi, UAE | 8 Years Experience | Patent Holder (US11573635)</span>
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Type '<span style="color: #ffa500; font-weight: bold;">help</span>' to see all available commands
-Type '<span style="color: #ffa500; font-weight: bold;">ls</span>' to explore the file system
-
-<span style="color: #888;">Tip: Use TAB for auto-completion and ↑↓ arrows for command history</span>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`);
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
         });
     </script>
 </body>
-</html>Type '<span style="color: #ffa500; font-weight: bold;">help</span>' to see all available commands
-Type '<span style="color: #ffa500; font-weight: bold;">ls</span>' to explore the file system
-
-<span style="color: #888;">Tip: Use TAB for auto-completion and ↑↓ arrows for command history</span>
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-`);
-        });
-    </script>
-</body>
-  </html>
+</html>
