@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="Mechatronics Engineer with 8+ years in robotics, automation, and innovation. Expert in 3D design, Python development, and complex system analysis. Creator of Bu Saif humanoid robot and contributor to US Patent 11573635.">
     <meta name="keywords" content="Mechatronics Engineer, Robotics, Automation, Python, 3D Design, Bu Saif, UAE, Abu Dhabi">
     <meta name="author" content="Bassam Walid Aljazzar">
@@ -21,6 +21,9 @@
             font-family: 'Courier New', 'Monaco', monospace;
             overflow: hidden;
             height: 100vh;
+            max-height: 100vh;
+            margin: 0;
+            padding: 0;
         }
 
         /* Header */
@@ -64,7 +67,9 @@
         .main-container {
             display: flex;
             height: calc(100vh - 70px);
+            max-height: calc(100vh - 70px);
             gap: 0;
+            overflow: hidden;
         }
 
         /* 3D Viewer Section (Left) */
@@ -94,6 +99,7 @@
             flex-direction: column;
             padding: 20px;
             overflow: hidden;
+            min-height: 0;
         }
 
         .terminal-box {
@@ -103,7 +109,9 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            max-height: 100%;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+            overflow: hidden;
         }
 
         .terminal-header {
@@ -140,8 +148,12 @@
         .terminal-output {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 20px;
+            padding-bottom: 10px;
             font-size: 14px;
+            min-height: 0;
+            -webkit-overflow-scrolling: touch;
         }
 
         .terminal-output::-webkit-scrollbar {
@@ -188,6 +200,8 @@
             background-color: #1a1a1a;
             padding: 15px;
             border-top: 1px solid #00ff00;
+            flex-shrink: 0;
+            min-height: 60px;
         }
 
         .welcome-text {
@@ -208,6 +222,8 @@
             padding: 15px;
             background-color: #0a0a0a;
             border-top: 1px solid #333;
+            flex-shrink: 0;
+            min-height: 50px;
         }
 
         #commandInput {
@@ -238,16 +254,36 @@
             .terminal-section {
                 flex: 1;
                 min-height: 400px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .terminal-box {
+                max-height: calc(100vh - 350px);
+                min-height: 400px;
             }
 
             .terminal-output {
                 font-size: 13px;
+                padding-bottom: 5px;
+            }
+
+            .terminal-footer {
+                flex-shrink: 0;
             }
         }
 
         @media (max-width: 768px) {
             body {
                 padding: 0;
+                height: 100vh;
+                max-height: 100vh;
+                overflow: hidden;
+            }
+
+            .main-container {
+                height: calc(100vh - 120px);
+                max-height: calc(100vh - 120px);
             }
 
             .header {
@@ -282,24 +318,32 @@
 
             .terminal-section {
                 padding: 10px;
+                min-height: 350px;
             }
 
             .terminal-box {
                 border-radius: 0;
+                max-height: calc(100vh - 320px);
+                min-height: 350px;
             }
 
             .terminal-output {
                 padding: 15px;
+                padding-bottom: 5px;
                 font-size: 12px;
+                flex: 1;
+                min-height: 0;
             }
 
             .terminal-input-line {
                 padding: 12px;
                 font-size: 12px;
+                flex-shrink: 0;
             }
 
             .terminal-footer {
                 padding: 12px;
+                flex-shrink: 0;
             }
 
             .welcome-text {
@@ -335,10 +379,17 @@
 
             .terminal-section {
                 padding: 5px;
+                min-height: 300px;
+            }
+
+            .terminal-box {
+                max-height: calc(100vh - 280px);
+                min-height: 300px;
             }
 
             .terminal-header {
                 padding: 8px 12px;
+                flex-shrink: 0;
             }
 
             .terminal-title {
@@ -347,16 +398,21 @@
 
             .terminal-output {
                 padding: 12px;
+                padding-bottom: 5px;
                 font-size: 11px;
+                flex: 1;
+                min-height: 0;
             }
 
             .terminal-input-line {
                 padding: 10px;
                 font-size: 11px;
+                flex-shrink: 0;
             }
 
             .terminal-footer {
                 padding: 10px;
+                flex-shrink: 0;
             }
 
             .welcome-text {
@@ -397,6 +453,11 @@
 
         /* Very small screens */
         @media (max-width: 320px) {
+            .main-container {
+                height: calc(100vh - 100px);
+                max-height: calc(100vh - 100px);
+            }
+
             .header h1 {
                 font-size: 16px;
             }
@@ -411,14 +472,41 @@
                 min-height: 180px;
             }
 
+            .terminal-box {
+                max-height: calc(100vh - 250px);
+                min-height: 280px;
+            }
+
             .terminal-output,
             .terminal-input-line,
             #commandInput {
                 font-size: 10px;
             }
 
+            .terminal-output {
+                padding: 10px;
+                padding-bottom: 5px;
+            }
+
             .welcome-text {
                 font-size: 8px;
+            }
+
+            .terminal-footer {
+                padding: 8px;
+                flex-shrink: 0;
+            }
+        }
+
+        /* iOS Safari fixes */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                height: -webkit-fill-available;
+            }
+            
+            .main-container {
+                height: calc(100vh - 70px);
+                height: calc(var(--vh, 1vh) * 100 - 70px);
             }
         }
     </style>
@@ -1077,6 +1165,16 @@ System:
 
         // Welcome message
         window.addEventListener('load', () => {
+            // Fix viewport height for mobile browsers (especially iOS)
+            const setViewportHeight = () => {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            };
+            
+            setViewportHeight();
+            window.addEventListener('resize', setViewportHeight);
+            window.addEventListener('orientationchange', setViewportHeight);
+            
             addOutput(`<pre style="color: #00ff00; line-height: 1.2; font-size: 0.75em;">
  ██████╗  █████╗ ███████╗███████╗ █████╗ ███╗   ███╗     █████╗ ██╗         ██╗ █████╗ ███████╗███████╗ █████╗ ██████╗ 
  ██╔══██╗██╔══██╗██╔════╝██╔════╝██╔══██╗████╗ ████║    ██╔══██╗██║         ██║██╔══██╗╚══███╔╝╚══███╔╝██╔══██╗██╔══██╗
