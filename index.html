@@ -83,12 +83,17 @@
             justify-content: center;
             position: relative;
             overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         spline-viewer {
             width: 100%;
             height: 100%;
             border: none;
+            pointer-events: auto;
+            touch-action: pan-x pan-y pinch-zoom;
         }
 
         /* Terminal Section (Right) */
@@ -241,6 +246,12 @@
             border-top: 1px solid #333;
             flex-shrink: 0;
             min-height: 50px;
+            cursor: text;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .terminal-input-line:hover {
+            background-color: #0f0f0f;
         }
 
         #commandInput {
@@ -253,6 +264,12 @@
             flex: 1;
             caret-color: #00ff00;
             margin-left: 5px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        #commandInput:focus {
+            outline: none;
         }
 
         /* Responsive */
@@ -577,7 +594,7 @@
                     <span class="separator">:</span>
                     <span class="directory" id="currentDir">~</span>
                     <span class="separator">$ </span>
-                    <input type="text" id="commandInput" autofocus autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <input type="text" id="commandInput" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 </div>
 
                 <!-- Terminal Footer (Fixed Welcome Text) -->
@@ -1161,8 +1178,7 @@ When answering:
 - Explain technical concepts clearly
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
-- Keep responses concise but informative
-- when someone ask you about the ai assistant model which used answer I'm ai trined as an ai assistant for eng. Bassam Aljazzar`;
+- Keep responses concise but informative`;
 
             try {
                 addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
@@ -1295,7 +1311,10 @@ When answering:
             commandInput.value = cmd;
             executeCommand(cmd);
             commandInput.value = '';
-            commandInput.focus();
+            // Don't auto-focus on mobile after nav command
+            if (window.innerWidth > 768) {
+                commandInput.focus();
+            }
         }
 
         // Event listeners
@@ -1332,9 +1351,28 @@ When answering:
             }
         });
 
-        document.addEventListener('click', () => {
+        // Focus input only when clicking on terminal or input itself
+        terminalOutput.addEventListener('click', (e) => {
             commandInput.focus();
         });
+
+        commandInput.addEventListener('click', () => {
+            commandInput.focus();
+        });
+
+        // Prevent 3D viewer from focusing input
+        const viewerSection = document.querySelector('.viewer-section');
+        if (viewerSection) {
+            viewerSection.addEventListener('touchstart', (e) => {
+                // Don't focus input when touching 3D viewer
+                e.stopPropagation();
+            });
+            
+            viewerSection.addEventListener('click', (e) => {
+                // Don't focus input when clicking 3D viewer
+                e.stopPropagation();
+            });
+        }
 
         // Welcome message
         window.addEventListener('load', () => {
@@ -1362,6 +1400,11 @@ When answering:
 <span style="color: #00ff00;">📍 Abu Dhabi, UAE | 8 Years Experience | Patent Holder (US11573635)</span>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+            
+            // Don't auto-focus on mobile to prevent keyboard popup
+            if (window.innerWidth > 768) {
+                commandInput.focus();
+            }
         });
     </script>
 </body>
