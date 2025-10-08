@@ -216,6 +216,23 @@
             font-weight: bold;
         }
 
+        /* Chat mode styles */
+        .chat-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #5BCEFA;
+            background: rgba(91, 206, 250, 0.05);
+        }
+
+        .ai-thinking {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
         .terminal-input-line {
             display: flex;
             align-items: center;
@@ -526,6 +543,7 @@
             <a onclick="executeNavCommand('skills')">skills</a> |
             <a onclick="executeNavCommand('cd projects')">projects</a> |
             <a onclick="executeNavCommand('contact')">contact</a> |
+            <a onclick="executeNavCommand('chatbot')" style="background: linear-gradient(90deg, #00ff00, #5BCEFA); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold;">🤖 chatbot</a> |
             <a onclick="executeNavCommand('clear')">clear</a>
         </div>
     </div>
@@ -566,6 +584,7 @@
                 <div class="terminal-footer">
                     <div class="welcome-text">
                         Type <span class="highlight">'help'</span> to see all available commands | 
+                        Type <span class="highlight">'chatbot'</span> to chat with AI 🤖 | 
                         Type <span class="highlight">'ls'</span> to explore the file system<br>
                         Tip: Use <span class="highlight">TAB</span> for auto-completion and <span class="highlight">↑↓</span> arrows for command history
                     </div>
@@ -581,6 +600,8 @@
         let commandHistory = [];
         let historyIndex = -1;
         let currentDir = '~';
+        let chatMode = false;
+        let chatHistory = [];
 
         // File system (same as before)
         const fileSystem = {
@@ -911,6 +932,9 @@ Quick Info:
   education       - Educational background
   contact         - Contact information
 
+AI Assistant:
+  chatbot         - 🤖 Chat with AI about Bassam & Mechatronics
+
 System:
   clear           - Clear terminal
   history         - Show command history
@@ -1059,8 +1083,132 @@ System:
                     return '😱 Nice try! But I\'m not deleting my portfolio!';
                 }
                 return '[sudo] password for bassam: \nSorry, no sudo access here 😄';
+            },
+
+            chatbot: () => {
+                chatMode = true;
+                chatHistory = [];
+                currentDirElement.textContent = '🤖 AI Chat';
+                return `<span style="color: #5BCEFA; font-weight: bold;">🤖 AI Chatbot Activated!</span>
+
+<span style="color: #00ff00;">I'm Bassam's AI assistant. I can help you with:</span>
+  • Information about Bassam's background and experience
+  • Details about his mechatronics projects
+  • Explanations about mechatronics engineering
+  • Questions about robotics and automation
+
+<span style="color: #F5A9B8;">Type your question and press Enter to chat.</span>
+<span style="color: #888;">Type 'exit' to return to terminal mode.</span>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
             }
         };
+
+        // AI Chat function using Pollinations.AI
+        async function sendChatMessage(userMessage) {
+            const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
+
+ABOUT BASSAM:
+- Name: Bassam Walid Aljazzar
+- Role: Mechatronics Engineer / Robotics Engineer
+- Location: Abu Dhabi, UAE
+- Experience: 8 years in robotics, automation, and innovation
+- Nationality: Palestinian
+- Languages: Arabic (Native), English (Advanced)
+
+EDUCATION:
+- BSc in Mechatronics Engineering from Al-Azhar University-Gaza (2011-2017)
+- Graduation Project: "Shrimp Rover Robot" - a six-wheeled robot inspired by shrimp movement
+
+CURRENT POSITION (June 2021 - Present):
+- Mechatronics Engineer at Tatweer Middle East and Africa
+- Consultant at UAE Ministry of Interior's Manufacturing Innovation Laboratory
+- Develops innovative solutions, Python software, and embedded systems
+- Conducts training courses and workshops
+
+KEY PROJECTS:
+1. Bu Saif Humanoid Robot (2020-2021): Python-based robot for mini-mental state examination (MMSE) for elderly patients with cognitive functions, in collaboration with UAE University and Dubai Health Authority
+2. Bu Saif Humanoid Robot (2019): Arabic-speaking humanoid robot presented at GITEX 2019 Exhibition in Dubai
+3. Meta Touch Project (2020): Touchless elevator button system to prevent COVID-19 transmission, now in commercial production
+4. US Patent 11573635: Contributed to developing face mask with EMG sensors for communication
+5. Shrimp Rover Robot (2016): Graduation project with six-wheeled design for obstacle navigation
+
+TECHNICAL SKILLS:
+- 3D Design: SolidWorks, Fusion 360, AutoCAD (Expert level)
+- Programming: Python (Experienced), ROS, Embedded Systems (Expert)
+- Robotics & Electronics: Expert in robotics, electronics hardware, Proteus
+- Manufacturing: CNC Machines, Laser Cutting, 3D Printing (Expert)
+
+WORK EXPERIENCE:
+- Research Assistant at UAE University (May 2019 - May 2021): Led Bu Saif robot project, COVID-19 prototypes
+- Mechatronics Engineer at Fadel Al Dhaheri General Trading (Nov 2018 - Apr 2019): Equipment maintenance
+- Mechatronics Engineer at Flash Tech Company (Jun 2017 - Nov 2017): Solar energy systems and PLC programming
+
+INTERESTS:
+- Drawing, 3D Designing, Kung Fu, Robotics
+
+CONTACT:
+- Email: b_aljazzar@yahoo.com
+- Phone: +971 56 611 3381
+- LinkedIn: linkedin.com/in/bassam-aljazzar
+
+MECHATRONICS ENGINEERING:
+Mechatronics is a multidisciplinary field combining mechanical, electrical, and computer engineering to create efficient, reliable, and versatile systems. It includes robotics, automation, control systems, embedded systems, and IoT.
+
+When answering:
+- Be helpful, professional, and friendly
+- Focus on Bassam's expertise in robotics and mechatronics
+- Explain technical concepts clearly
+- Highlight his projects and achievements
+- If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
+- Keep responses concise but informative`;
+
+            try {
+                addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
+                
+                chatHistory.push({
+                    role: 'user',
+                    content: userMessage
+                });
+
+                const response = await fetch('https://text.pollinations.ai/openai', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            ...chatHistory
+                        ],
+                        model: 'openai',
+                        seed: 42
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('AI service unavailable');
+                }
+
+                const data = await response.json();
+                const aiResponse = data.choices[0].message.content;
+                
+                chatHistory.push({
+                    role: 'assistant',
+                    content: aiResponse
+                });
+
+                // Remove "thinking" message
+                const outputs = terminalOutput.children;
+                if (outputs.length > 0) {
+                    terminalOutput.removeChild(outputs[outputs.length - 1]);
+                }
+
+                return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
+            } catch (error) {
+                return `<span style="color: #ff6b6b;">Error: Unable to connect to AI service. Please try again.</span>`;
+            }
+        }
 
         function getDirectory(path) {
             if (path === '~') return fileSystem['~'];
@@ -1089,7 +1237,11 @@ System:
             div.className = 'output-line';
             
             if (isCommand) {
-                div.innerHTML = `<span class="username">bassam@portfolio</span><span class="separator">:</span><span class="directory">${currentDir}</span><span class="separator">$ </span><span class="command">${commandText}</span>`;
+                if (chatMode) {
+                    div.innerHTML = `<span style="color: #5BCEFA;">👤 You:</span> <span class="command">${commandText}</span>`;
+                } else {
+                    div.innerHTML = `<span class="username">bassam@portfolio</span><span class="separator">:</span><span class="directory">${currentDir}</span><span class="separator">$ </span><span class="command">${commandText}</span>`;
+                }
             } else {
                 div.innerHTML = content;
             }
@@ -1104,6 +1256,26 @@ System:
 
             commandHistory.push(trimmed);
             historyIndex = -1;
+
+            // Check if in chat mode
+            if (chatMode) {
+                if (trimmed.toLowerCase() === 'exit') {
+                    chatMode = false;
+                    chatHistory = [];
+                    currentDir = '~';
+                    currentDirElement.textContent = '~';
+                    addOutput('', true, trimmed);
+                    addOutput('<span style="color: #00ff00;">✓ Exited chat mode. Back to terminal.</span>');
+                    return;
+                }
+
+                // Send message to AI
+                addOutput('', true, trimmed);
+                sendChatMessage(trimmed).then(response => {
+                    addOutput(response);
+                });
+                return;
+            }
 
             addOutput('', true, trimmed);
 
