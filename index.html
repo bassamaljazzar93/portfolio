@@ -1194,12 +1194,25 @@ System:
         };
 
 
-// AI chat - optimized for Pollinations API
+// AI chat with rate limiting and smart retry
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL = 3500; // 3.5 seconds minimum between requests
+
 async function sendChatMessage(userMessage) {
   if (window.__aiBusy) {
     return `<span style="color:#ffbd2e;">⏳ انتظر قليلاً...</span>`;
   }
+
+  // Rate limit check
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+    const waitTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000);
+    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية (حماية من الحجب)</span>`;
+  }
+
   window.__aiBusy = true;
+  lastRequestTime = now;
 
   const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
@@ -1265,31 +1278,29 @@ When answering:
   terminalOutput.appendChild(thinkingDiv);
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
 
+  // Keep only last 6 messages to avoid token limits
+  const recentHistory = chatHistory.slice(-6);
+  
   const messages = [
     { role: 'system', content: systemPrompt },
-    ...chatHistory,
+    ...recentHistory,
     { role: 'user', content: userMessage }
   ];
 
-  // Try POST then GET with proper config
   async function tryAPI(attempt = 1) {
-    const maxAttempts = 3;
-    
     try {
-      // POST attempt with proper timeout
+      // POST with proper config
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       
       const response = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messages,
           model: 'openai',
           seed: 42,
-          referrer: 'bassam-portfolio' // Add referrer for better rate limits
+          referrer: 'bassam-portfolio'
         }),
         signal: controller.signal
       });
@@ -1301,18 +1312,27 @@ When answering:
         const text = data?.choices?.[0]?.message?.content;
         if (text) return text;
       }
+      
+      // Check if it's a rate limit error
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT');
+      }
+      
     } catch (e) {
+      if (e.message === 'RATE_LIMIT') {
+        throw e;
+      }
       console.log(`POST attempt ${attempt} failed:`, e.message);
     }
 
     // GET fallback
     try {
-      const lastAssistant = [...chatHistory]
+      const lastAssistant = [...recentHistory]
         .reverse()
         .find(m => m.role === 'assistant')?.content || '';
       
       const prompt = [
-        lastAssistant ? `Previous: ${lastAssistant}` : '',
+        lastAssistant ? `Previous: ${lastAssistant.substring(0, 200)}` : '',
         `User: ${userMessage}`,
         'Assistant:'
       ].filter(Boolean).join('\n\n');
@@ -1331,17 +1351,25 @@ When answering:
         const text = await response.text();
         if (text) return text;
       }
+      
+      if (response.status === 429) {
+        throw new Error('RATE_LIMIT');
+      }
+      
     } catch (e) {
+      if (e.message === 'RATE_LIMIT') {
+        throw e;
+      }
       console.log(`GET attempt ${attempt} failed:`, e.message);
     }
 
-    // Retry with delay
-    if (attempt < maxAttempts) {
-      await new Promise(r => setTimeout(r, 3000)); // Wait 3s between attempts
+    // Retry with exponential backoff
+    if (attempt < 2) {
+      await new Promise(r => setTimeout(r, 4000 * attempt));
       return tryAPI(attempt + 1);
     }
     
-    throw new Error('All attempts failed');
+    throw new Error('ALL_FAILED');
   }
 
   try {
@@ -1353,12 +1381,22 @@ When answering:
       { role: 'assistant', content: text }
     );
     
+    // Keep history manageable
+    if (chatHistory.length > 12) {
+      chatHistory = chatHistory.slice(-12);
+    }
+    
     logChatMessage(userMessage, text);
     return `<span style="color:#5BCEFA;">🤖 AI:</span> ${text}`;
     
   } catch (error) {
     thinkingDiv.remove();
-    return `<span style="color:#ff6b6b;">❌ فشل الاتصال بعد 3 محاولات. جرّب مرة ثانية.</span>`;
+    
+    if (error.message === 'RATE_LIMIT') {
+      return `<span style="color:#ffa500;">⚠️ الـ API محجوب مؤقتاً. انتظر 5 ثواني وجرّب مرة ثانية.</span>`;
+    }
+    
+    return `<span style="color:#ff6b6b;">❌ فشل الاتصال. انتظر قليلاً وجرّب مرة ثانية.</span>`;
   } finally {
     window.__aiBusy = false;
   }
