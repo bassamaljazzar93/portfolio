@@ -1194,13 +1194,11 @@ System:
         };
 
 
-// AI chat with background auto-retry on failure (POST → GET; timeouts handled)
-// - يُظهر خطأ مختصر فورًا للمستخدم
-// - ثم يحاول تلقائياً بالخلفية (بدون إزعاج المستخدم) لحد ما ينجح أو تنتهي المحاولات
+// AI chat with persistent background retry - never fails immediately
 async function sendChatMessage(userMessage) {
-  // حارس لمنع التشابك أثناء الإرسال "الأولي" فقط (الخلفية لا تحجزه)
-  if (window.__aiBusy && window.__aiBusy !== 'background') {
-    return `<span style="color:#ffbd2e;">⏳ ما زلت أفكّر في الرسالة السابقة… جرّب بعد لحظة.</span>`;
+  // حارس لمنع إرسال رسائل متعددة في نفس الوقت
+  if (window.__aiBusy) {
+    return `<span style="color:#ffbd2e;">⏳ انتظر قليلاً، ما زلت أعالج الرسالة السابقة...</span>`;
   }
   window.__aiBusy = true;
 
@@ -1260,158 +1258,181 @@ When answering:
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
 - Keep responses concise but informative
-- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab)`;
+- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam's virtual lab)`;
 
-  // واجهة "التفكير"
-  addOutput(`<span style="color:#888;font-style:italic;">🤖 AI is thinking...</span>`);
-  const removeThinking = () => {
-    const outputs = terminalOutput.children;
-    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
+  // أظهر رسالة "التفكير" وسجّل مرجعها للحذف لاحقاً
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'output-line';
+  thinkingDiv.innerHTML = `<span style="color:#888;font-style:italic;">🤖 AI is thinking...</span>`;
+  terminalOutput.appendChild(thinkingDiv);
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+  // أدوات مساعدة
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  const fetchWithTimeout = (url, options = {}, timeoutMs = 15000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal })
+      .finally(() => clearTimeout(timeoutId));
   };
 
-  // أدوات
-  const dbg = (...a)=>{ try{ console.log('[AI DEBUG]',...a);}catch{} };
-  const wait = (ms)=> new Promise(r=>setTimeout(r,ms));
-  const fetchWithTimeout = (url, opts={}, ms=12000)=>{
-    const c = new AbortController(); const id = setTimeout(()=>c.abort(), ms);
-    return fetch(url, {...opts, signal:c.signal}).finally(()=>clearTimeout(id));
-  };
+  // بناء الرسائل
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...chatHistory,
+    { role: 'user', content: userMessage }
+  ];
 
-  // البنية للـPOST
-  const messages = [{ role:'system', content: systemPrompt }, ...chatHistory, { role:'user', content: userMessage }];
-
+  // محاولة POST
   async function tryPOST() {
-    const url = 'https://text.pollinations.ai/openai';
-    const resp = await fetchWithTimeout(url, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json' },
-      referrerPolicy:'no-referrer',
-      credentials:'omit',
-      body: JSON.stringify({ messages, model:'openai', seed:42 })
-    });
-    if (!resp.ok) throw new Error(`POST ${resp.status}`);
-    const data = await resp.json().catch(()=> ({}));
-    const text = data?.choices?.[0]?.message?.content;
-    if (!text) throw new Error('POST parse error');
-    return text;
+    try {
+      const response = await fetchWithTimeout(
+        'https://text.pollinations.ai/openai',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: messages,
+            model: 'openai',
+            seed: 42
+          }),
+          referrerPolicy: 'no-referrer',
+          credentials: 'omit'
+        },
+        15000
+      );
+
+      if (!response.ok) throw new Error(`POST failed: ${response.status}`);
+      
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+      
+      if (!text) throw new Error('Empty response from POST');
+      
+      return text;
+    } catch (error) {
+      console.log('POST attempt failed:', error.message);
+      throw error;
+    }
   }
 
+  // محاولة GET (بديل)
   async function tryGET() {
-    const lastAssistant = [...chatHistory].reverse().find(m=>m.role==='assistant')?.content;
-    const prompt = [
-      `System: ${systemPrompt}`,
-      lastAssistant ? `Assistant (previous): ${lastAssistant}` : '',
-      `User: ${userMessage}`,
-      `Assistant:`
-    ].filter(Boolean).join('\n\n');
+    try {
+      const lastAssistant = [...chatHistory]
+        .reverse()
+        .find(m => m.role === 'assistant')?.content;
+      
+      const prompt = [
+        `System: ${systemPrompt}`,
+        lastAssistant ? `Assistant (previous): ${lastAssistant}` : '',
+        `User: ${userMessage}`,
+        'Assistant:'
+      ].filter(Boolean).join('\n\n');
 
-    const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}`;
-    const r = await fetchWithTimeout(url, {
-      method:'GET',
-      referrerPolicy:'no-referrer',
-      credentials:'omit'
-    });
-    if (!r.ok) throw new Error(`GET ${r.status}`);
-    const text = await r.text();
-    if (!text) throw new Error('GET empty');
-    return text;
+      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=42`;
+      
+      const response = await fetchWithTimeout(url, {
+        method: 'GET',
+        referrerPolicy: 'no-referrer',
+        credentials: 'omit'
+      }, 15000);
+
+      if (!response.ok) throw new Error(`GET failed: ${response.status}`);
+      
+      const text = await response.text();
+      
+      if (!text) throw new Error('Empty response from GET');
+      
+      return text;
+    } catch (error) {
+      console.log('GET attempt failed:', error.message);
+      throw error;
+    }
   }
 
-  async function attemptOnce() {
-    // نحاول POST أولاً، ثم GET
+  // محاولة واحدة (POST ثم GET)
+  async function singleAttempt() {
     try {
       return await tryPOST();
     } catch (e1) {
-      dbg('POST fail:', e1?.message || e1);
       try {
         return await tryGET();
       } catch (e2) {
-        dbg('GET fail:', e2?.message || e2);
         throw e2;
       }
     }
   }
 
-  try {
-    // محاولة فورية (تفاعلية)
-    const text = await attemptOnce();
-    chatHistory.push({ role:'user', content:userMessage }, { role:'assistant', content:text });
-    removeThinking();
-    logChatMessage(userMessage, text);
-    return `<span style="color:#5BCEFA;">🤖 AI:</span> ${text}`;
-  } catch (e) {
-    // فشل فوري: أعرض رسالة خفيفة، ثم ابدأ إعادة المحاولات بالخلفية
-    removeThinking();
-    const notice = `<span style="color:#ffbd2e;">⚠️ اتصال غير مستقر — سأحاول بالخلفية وأعرض الرد إذا نجحت المحاولة.</span>`;
-    // ابدأ المحاولات بالخلفية
-    backgroundRetry(userMessage, systemPrompt).catch(()=>{});
-    return notice;
-  } finally {
-    // حرّر الحارس ليفتح المجال لرسائل جديدة بينما الخلفية تعمل
-    window.__aiBusy = false;
-  }
+  // إعادة المحاولة مع Exponential Backoff
+  async function retryWithBackoff() {
+    const maxAttempts = 6; // 6 محاولات = حوالي دقيقة
+    const delays = [0, 2000, 4000, 8000, 12000, 15000]; // بالميلي ثانية
 
-  // ——— خلفية: إعادة المحاولة مع Backoff (لا تزعج المستخدم) ———
-  async function backgroundRetry(msg, sys) {
-    window.__aiBusy = 'background'; // لا تمنع رسائل جديدة، بس تمنع تداخل إعادة خلفية ثانية
-    const maxTries = 5;
-    const base = 1500; // 1.5s
-    for (let i=1; i<=maxTries; i++) {
-      await wait(Math.min(base * Math.pow(2, i-1), 15000)); // 1.5s,3s,6s,12s,15s
-      dbg(`BG retry ${i}/${maxTries}`);
-      // ابنِ الرسائل كل مرة لتحديث السياق لو صار كلام جديد
-      const msgs = [{ role:'system', content: sys }, ...chatHistory, { role:'user', content: msg }];
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        // جرّب POST
-        const postResp = await fetchWithTimeout('https://text.pollinations.ai/openai', {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json' },
-          referrerPolicy:'no-referrer',
-          credentials:'omit',
-          body: JSON.stringify({ messages: msgs, model:'openai', seed:42 })
-        });
-        if (postResp.ok) {
-          const data = await postResp.json().catch(()=> ({}));
-          const out = data?.choices?.[0]?.message?.content;
-          if (out) {
-            chatHistory.push({ role:'user', content: msg }, { role:'assistant', content: out });
-            addOutput(`<span style="color:#5BCEFA;">🤖 AI (recovered):</span> ${out}`);
-            logChatMessage(msg, out);
-            window.__aiBusy = false;
-            return;
-          }
+        console.log(`Attempt ${attempt + 1}/${maxAttempts}`);
+        
+        // انتظر قبل المحاولة (إلا الأولى)
+        if (delays[attempt] > 0) {
+          await wait(delays[attempt]);
         }
-        // وإلا جرّب GET
-        const lastA = [...chatHistory].reverse().find(m=>m.role==='assistant')?.content;
-        const prompt = [
-          `System: ${sys}`,
-          lastA ? `Assistant (previous): ${lastA}` : '',
-          `User: ${msg}`,
-          `Assistant:`
-        ].filter(Boolean).join('\n\n');
-        const getUrl = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=42&system=${encodeURIComponent(sys)}`;
-        const getResp = await fetchWithTimeout(getUrl, {
-          method:'GET',
-          referrerPolicy:'no-referrer',
-          credentials:'omit'
-        });
-        if (getResp.ok) {
-          const out = await getResp.text();
-          if (out) {
-            chatHistory.push({ role:'user', content: msg }, { role:'assistant', content: out });
-            addOutput(`<span style="color:#5BCEFA;">🤖 AI (recovered):</span> ${out}`);
-            logChatMessage(msg, out);
-            window.__aiBusy = false;
-            return;
-          }
+
+        // حاول الاتصال
+        const response = await singleAttempt();
+        
+        // نجحت المحاولة!
+        return { success: true, text: response };
+        
+      } catch (error) {
+        console.log(`Attempt ${attempt + 1} failed:`, error.message);
+        
+        // إذا كانت آخر محاولة، ارجع فشل
+        if (attempt === maxAttempts - 1) {
+          return { 
+            success: false, 
+            error: 'فشل الاتصال بعد عدة محاولات. تحقق من اتصال الإنترنت وحاول مرة أخرى.' 
+          };
         }
-      } catch (err) {
-        dbg('BG retry error:', err?.message || err);
-        // يواصل للمحاولة التالية
+        
+        // وإلا استمر للمحاولة التالية
       }
     }
-    // انتهت المحاولات الخلفية بدون نجاح
-    addOutput(`<span style="color:#ff6b6b;">لم أستطع استرجاع الرد تلقائيًا بعد عدة محاولات. أعد الإرسال لاحقًا.</span>`);
+  }
+
+  // ابدأ المحاولات
+  try {
+    const result = await retryWithBackoff();
+    
+    // احذف رسالة "التفكير"
+    if (thinkingDiv.parentNode) {
+      thinkingDiv.parentNode.removeChild(thinkingDiv);
+    }
+
+    if (result.success) {
+      // نجحت! سجّل في التاريخ واعرض الرد
+      chatHistory.push(
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: result.text }
+      );
+      
+      // سجّل في Analytics
+      logChatMessage(userMessage, result.text);
+      
+      return `<span style="color:#5BCEFA;">🤖 AI:</span> ${result.text}`;
+    } else {
+      // فشلت كل المحاولات
+      return `<span style="color:#ff6b6b;">❌ ${result.error}</span>`;
+    }
+    
+  } catch (error) {
+    // خطأ غير متوقع
+    if (thinkingDiv.parentNode) {
+      thinkingDiv.parentNode.removeChild(thinkingDiv);
+    }
+    return `<span style="color:#ff6b6b;">❌ حدث خطأ غير متوقع. حاول مرة أخرى.</span>`;
+  } finally {
+    // حرر القفل
     window.__aiBusy = false;
   }
 }
