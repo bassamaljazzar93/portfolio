@@ -619,6 +619,76 @@
         let currentDir = '~';
         let chatMode = false;
         let chatHistory = [];
+        
+        // Google Sheets Analytics Configuration
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbxWblq8swF_Q8YgyMNOufr1S4hcM5pkJY5qNKfJjDRNAxbeVFaoF79hFjroxHZdLV_KMg/exec';
+        
+        // Generate unique session ID
+        const sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        // Detect user info
+        let userCountry = 'Unknown';
+        let userDevice = /Mobile|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
+        let userBrowser = navigator.userAgent.includes('Chrome') ? 'Chrome' : 
+                          navigator.userAgent.includes('Firefox') ? 'Firefox' : 
+                          navigator.userAgent.includes('Safari') ? 'Safari' : 'Other';
+
+        // Analytics Functions
+        async function getCountry() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                userCountry = data.country_name || 'Unknown';
+            } catch (error) {
+                userCountry = 'Unknown';
+            }
+        }
+
+        async function logVisitor() {
+            if (!GOOGLE_SHEET_URL) return;
+            
+            try {
+                await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'visitor',
+                        country: userCountry,
+                        device: userDevice,
+                        browser: userBrowser,
+                        page: 'Home'
+                    })
+                });
+            } catch (error) {
+                console.log('Analytics logging failed (silent)');
+            }
+        }
+
+        async function logChatMessage(userMsg, aiMsg) {
+            if (!GOOGLE_SHEET_URL) return;
+            
+            try {
+                await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: 'chat',
+                        userMessage: userMsg,
+                        aiResponse: aiMsg,
+                        sessionId: sessionId,
+                        country: userCountry
+                    })
+                });
+            } catch (error) {
+                console.log('Chat logging failed (silent)');
+            }
+        }
 
         // File system (same as before)
         const fileSystem = {
@@ -1117,6 +1187,8 @@ System:
 <span style="color: #F5A9B8;">Type your question and press Enter to chat.</span>
 <span style="color: #888;">Type 'exit' to return to terminal mode.</span>
 
+<span style="color: #666; font-size: 0.9em;">📝 Note: Conversations are logged for quality improvement.</span>
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
             }
         };
@@ -1179,9 +1251,8 @@ When answering:
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
 - Keep responses concise but informative
-- when someone ask you about the ai assistant model which used answer I'm ai trined as an ai assistant for eng. Bassam Aljazzarز
+- when someone ask you about the ai assistant model which used answer I'm ai trined as an ai assistant for eng. Bassam Aljazzar.
 - If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab).`;
-
 
             try {
                 addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
@@ -1223,6 +1294,9 @@ When answering:
                 if (outputs.length > 0) {
                     terminalOutput.removeChild(outputs[outputs.length - 1]);
                 }
+
+                // Log chat message to Google Sheets
+                logChatMessage(userMessage, aiResponse);
 
                 return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
             } catch (error) {
@@ -1378,7 +1452,7 @@ When answering:
         }
 
         // Welcome message
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             // Fix viewport height for mobile browsers (especially iOS)
             const setViewportHeight = () => {
                 const vh = window.innerHeight * 0.01;
@@ -1388,6 +1462,10 @@ When answering:
             setViewportHeight();
             window.addEventListener('resize', setViewportHeight);
             window.addEventListener('orientationchange', setViewportHeight);
+            
+            // Get country and log visitor
+            await getCountry();
+            logVisitor();
             
             addOutput(`<pre style="color: #00ff00; line-height: 1.2; font-size: 0.75em;">
  ██████╗  █████╗ ███████╗███████╗ █████╗ ███╗   ███╗     █████╗ ██╗         ██╗ █████╗ ███████╗███████╗ █████╗ ██████╗ 
