@@ -1195,7 +1195,7 @@ System:
 
         // AI Chat function using Pollinations.AI
         async function sendChatMessage(userMessage) {
-            const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
+  const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
 ABOUT BASSAM:
 - Name: Bassam Walid Aljazzar
@@ -1254,55 +1254,42 @@ When answering:
 - when someone ask you about the ai assistant model which used answer I'm ai trined as an ai assistant for eng. Bassam Aljazzar.
 - If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab).`;
 
-            try {
-                addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
-                
-                chatHistory.push({
-                    role: 'user',
-                    content: userMessage
-                });
+  try {
+    addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
 
-                const response = await fetch('https://text.pollinations.ai/openai', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        messages: [
-                            { role: 'system', content: systemPrompt },
-                            ...chatHistory
-                        ],
-                        model: 'openai',
-                        seed: 42
-                    })
-                });
+    // ✅ استخدم GET بدل POST — مع json=true لإرجاع JSON
+    const url =
+      `https://text.pollinations.ai/${encodeURIComponent(userMessage)}` +
+      `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}&json=true`;
 
-                if (!response.ok) {
-                    throw new Error('AI service unavailable');
-                }
+    const resp = await fetch(url, { method: 'GET' });
+    if (!resp.ok) throw new Error('AI text endpoint returned bad status');
 
-                const data = await response.json();
-                const aiResponse = data.choices[0].message.content;
-                
-                chatHistory.push({
-                    role: 'assistant',
-                    content: aiResponse
-                });
+    const raw = await resp.text();
 
-                // Remove "thinking" message
-                const outputs = terminalOutput.children;
-                if (outputs.length > 0) {
-                    terminalOutput.removeChild(outputs[outputs.length - 1]);
-                }
+    // أحيانًا يكون JSON فيه {text: "..."}، وأحيانًا نص عادي
+    let aiText = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      aiText = parsed.text || parsed.response || parsed.output || raw;
+    } catch { /* ignore parse errors */ }
 
-                // Log chat message to Google Sheets
-                logChatMessage(userMessage, aiResponse);
+    // إزالة سطر "thinking..."
+    const outputs = terminalOutput.children;
+    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
 
-                return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
-            } catch (error) {
-                return `<span style="color: #ff6b6b;">Error: Unable to connect to AI service. Please try again.</span>`;
-            }
-        }
+    // تسجيل الدردشة في Google Sheets (لو مُفعّل)
+    logChatMessage(userMessage, aiText);
+
+    return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiText}`;
+  } catch (error) {
+    // إزالة سطر "thinking..." عند الخطأ كذلك
+    const outputs = terminalOutput.children;
+    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
+
+    return `<span style="color: #ff6b6b;">Error: AI text endpoint not reachable. Try again.</span>`;
+  }
+}
 
         function getDirectory(path) {
             if (path === '~') return fileSystem['~'];
