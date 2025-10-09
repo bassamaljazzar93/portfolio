@@ -1194,9 +1194,14 @@ System:
         };
 
 
-// AI Chat function using Pollinations.AI
-        async function sendChatMessage(userMessage) {
-            const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
+// AI chat - optimized for Pollinations API
+async function sendChatMessage(userMessage) {
+  if (window.__aiBusy) {
+    return `<span style="color:#ffbd2e;">⏳ انتظر قليلاً...</span>`;
+  }
+  window.__aiBusy = true;
+
+  const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
 ABOUT BASSAM:
 - Name: Bassam Walid Aljazzar
@@ -1251,57 +1256,113 @@ When answering:
 - Explain technical concepts clearly
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
-- Keep responses concise but informative`;
+- Keep responses concise but informative
+- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam's virtual lab)`;
 
-            try {
-                addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
-                
-                chatHistory.push({
-                    role: 'user',
-                    content: userMessage
-                });
+  const thinkingDiv = document.createElement('div');
+  thinkingDiv.className = 'output-line';
+  thinkingDiv.innerHTML = `<span style="color:#888;font-style:italic;">🤖 AI is thinking...</span>`;
+  terminalOutput.appendChild(thinkingDiv);
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
 
-                const response = await fetch('https://text.pollinations.ai/openai', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        messages: [
-                            { role: 'system', content: systemPrompt },
-                            ...chatHistory
-                        ],
-                        model: 'openai',
-                        seed: 42
-                    })
-                });
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...chatHistory,
+    { role: 'user', content: userMessage }
+  ];
 
-                if (!response.ok) {
-                    throw new Error('AI service unavailable');
-                }
+  // Try POST then GET with proper config
+  async function tryAPI(attempt = 1) {
+    const maxAttempts = 3;
+    
+    try {
+      // POST attempt with proper timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+      
+      const response = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: messages,
+          model: 'openai',
+          seed: 42,
+          referrer: 'bassam-portfolio' // Add referrer for better rate limits
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content;
+        if (text) return text;
+      }
+    } catch (e) {
+      console.log(`POST attempt ${attempt} failed:`, e.message);
+    }
 
-                const data = await response.json();
-                const aiResponse = data.choices[0].message.content;
-                
-                chatHistory.push({
-                    role: 'assistant',
-                    content: aiResponse
-                });
+    // GET fallback
+    try {
+      const lastAssistant = [...chatHistory]
+        .reverse()
+        .find(m => m.role === 'assistant')?.content || '';
+      
+      const prompt = [
+        lastAssistant ? `Previous: ${lastAssistant}` : '',
+        `User: ${userMessage}`,
+        'Assistant:'
+      ].filter(Boolean).join('\n\n');
 
-                // Remove "thinking" message
-                const outputs = terminalOutput.children;
-                if (outputs.length > 0) {
-                    terminalOutput.removeChild(outputs[outputs.length - 1]);
-                }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch(
+        `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=42&referrer=bassam-portfolio&system=${encodeURIComponent(systemPrompt)}`,
+        { signal: controller.signal }
+      );
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const text = await response.text();
+        if (text) return text;
+      }
+    } catch (e) {
+      console.log(`GET attempt ${attempt} failed:`, e.message);
+    }
 
-                // Log chat message to Google Sheets
-                logChatMessage(userMessage, aiResponse);
+    // Retry with delay
+    if (attempt < maxAttempts) {
+      await new Promise(r => setTimeout(r, 3000)); // Wait 3s between attempts
+      return tryAPI(attempt + 1);
+    }
+    
+    throw new Error('All attempts failed');
+  }
 
-                return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
-            } catch (error) {
-                return `<span style="color: #ff6b6b;">Error: Unable to connect to AI service. Please try again.</span>`;
-            }
-        }
+  try {
+    const text = await tryAPI();
+    thinkingDiv.remove();
+    
+    chatHistory.push(
+      { role: 'user', content: userMessage },
+      { role: 'assistant', content: text }
+    );
+    
+    logChatMessage(userMessage, text);
+    return `<span style="color:#5BCEFA;">🤖 AI:</span> ${text}`;
+    
+  } catch (error) {
+    thinkingDiv.remove();
+    return `<span style="color:#ff6b6b;">❌ فشل الاتصال بعد 3 محاولات. جرّب مرة ثانية.</span>`;
+  } finally {
+    window.__aiBusy = false;
+  }
+}
 
         function getDirectory(path) {
             if (path === '~') return fileSystem['~'];
