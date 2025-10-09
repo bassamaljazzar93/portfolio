@@ -1194,7 +1194,7 @@ System:
         };
 
 
-        // AI Chat function using Pollinations.AI (POST → GET fallback + Debug)
+    // AI Chat function using Pollinations.AI (POST → GET fallback, full systemPrompt)
 async function sendChatMessage(userMessage) {
   const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
@@ -1254,40 +1254,36 @@ When answering:
 - Keep responses concise but informative
 - If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab)`;
 
-  // أضف سطر "thinking..."
+  // UI: thinking...
   addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
-
-  // إزالة سطر "thinking..." بأمان
   const removeThinking = () => {
     const outputs = terminalOutput.children;
     if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
   };
 
-  // أداة Timeout
+  // Helpers
   const fetchWithTimeout = (url, opts = {}, ms = 12000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), ms);
     const merged = { ...opts, signal: controller.signal };
     return fetch(url, merged).finally(() => clearTimeout(id));
   };
+  const dbg = (...args) => { try { console.log('[AI DEBUG]', ...args); } catch(_) {} };
 
-  // Debug للطباعة في Console
-  const dbg = (...args) => { try { console.log('[AI DEBUG]', ...args); } catch (_) {} };
+  // Build messages for POST
+  const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory, { role: 'user', content: userMessage }];
 
-  // 1) المحاولة الأساسية — POST (OpenAI-compatible)
+  // 1) Try POST first (OpenAI-compatible)
   try {
     const postUrl = 'https://text.pollinations.ai/openai';
-    const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory, { role: 'user', content: userMessage }];
-    const body = JSON.stringify({ messages, model: 'openai', seed: 42 });
-
-    dbg('POST →', postUrl, { bodyPreview: body.slice(0, 200) + '...' });
+    dbg('POST →', postUrl);
 
     const resp = await fetchWithTimeout(postUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       referrerPolicy: 'no-referrer',
       credentials: 'omit',
-      body
+      body: JSON.stringify({ messages, model: 'openai', seed: 42 })
     });
 
     dbg('POST status:', resp.status);
@@ -1299,21 +1295,29 @@ When answering:
 
     const data = await resp.json().catch(() => ({}));
     const aiResponse = data?.choices?.[0]?.message?.content || 'No content.';
-
     chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiResponse });
     removeThinking();
     logChatMessage(userMessage, aiResponse);
-
     return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
 
   } catch (postErr) {
     dbg('POST error:', postErr?.name, postErr?.message);
 
-    // 2) الخطة البديلة — GET (غالبًا أسهل CORS)
+    // 2) Fallback: GET (NO json=true)
     try {
+      // نبني برومبت GET: system + آخر رد للمساعد (إن وجد) + سؤال المستخدم
+      const lastAssistant = [...chatHistory].reverse().find(m => m.role === 'assistant')?.content;
+      const promptParts = [
+        `System: ${systemPrompt}`,
+        lastAssistant ? `Assistant (previous): ${lastAssistant}` : '',
+        `User: ${userMessage}`,
+        `Assistant:`
+      ].filter(Boolean);
+      const prompt = promptParts.join('\n\n');
+
       const getUrl =
-        `https://text.pollinations.ai/${encodeURIComponent(userMessage)}` +
-        `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}&json=true`;
+        `https://text.pollinations.ai/${encodeURIComponent(prompt)}` +
+        `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}`;
 
       dbg('GET →', getUrl);
 
@@ -1330,17 +1334,10 @@ When answering:
         throw new Error(`GET failed (status ${r2.status}) ${txt ? '• body: ' + txt.slice(0, 200) : ''}`);
       }
 
-      const raw = await r2.text();
-      let aiText = raw;
-      try {
-        const parsed = JSON.parse(raw);
-        aiText = parsed.text || parsed.response || parsed.output || raw;
-      } catch { /* ignore non-JSON */ }
-
+      const aiText = await r2.text(); // نص عادي بدون json=true
       chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiText });
       removeThinking();
       logChatMessage(userMessage, aiText);
-
       return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiText}`;
 
     } catch (getErr) {
@@ -1349,7 +1346,6 @@ When answering:
 
       const postMsg = postErr?.name === 'AbortError' ? 'Timeout on POST (12s).' : (postErr?.message || 'POST failed.');
       const getMsg  = getErr?.name  === 'AbortError' ? 'Timeout on GET (12s).'  : (getErr?.message  || 'GET failed.');
-
       const hint =
 `Hints:
 - افتح الصفحة عبر http(s) وليس file://
@@ -1367,6 +1363,7 @@ ${hint}
     }
   }
 }
+
 
 
         function getDirectory(path) {
