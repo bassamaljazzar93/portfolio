@@ -1194,8 +1194,20 @@ System:
         };
 
 
-    // AI Chat function using Pollinations.AI (POST → GET fallback, full systemPrompt)
+   // Robust AI Chat function (POST → GET fallback, retries, single-flight guard, full systemPrompt)
 async function sendChatMessage(userMessage) {
+  // امنع الطلبات المتزامنة (بدون تعديل بقية الكود)
+  if (window.__aiBusy) {
+    return `<span style="color:#ffbd2e;">⏳ ما زلت أفكّر في الرسالة السابقة… جرّب بعد لحظة.</span>`;
+  }
+  window.__aiBusy = true;
+
+  // لو المتصفح أوفلاين
+  if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+    window.__aiBusy = false;
+    return `<span style="color:#ff6b6b;">أنت غير متصل بالإنترنت حاليًا.</span>`;
+  }
+
   const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
 ABOUT BASSAM:
@@ -1254,115 +1266,135 @@ When answering:
 - Keep responses concise but informative
 - If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab)`;
 
-  // UI: thinking...
+  // أضف سطر "thinking..."
   addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
   const removeThinking = () => {
     const outputs = terminalOutput.children;
     if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
   };
 
-  // Helpers
+  // أدوات مساعدة
+  const dbg = (...args) => { try { console.log('[AI DEBUG]', ...args); } catch(_) {} };
+  const wait = (ms) => new Promise(res => setTimeout(res, ms));
   const fetchWithTimeout = (url, opts = {}, ms = 12000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), ms);
     const merged = { ...opts, signal: controller.signal };
     return fetch(url, merged).finally(() => clearTimeout(id));
   };
-  const dbg = (...args) => { try { console.log('[AI DEBUG]', ...args); } catch(_) {} };
 
-  // Build messages for POST
+  // نبني الرسائل للـPOST
   const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory, { role: 'user', content: userMessage }];
 
-  // 1) Try POST first (OpenAI-compatible)
-  try {
-    const postUrl = 'https://text.pollinations.ai/openai';
-    dbg('POST →', postUrl);
-
-    const resp = await fetchWithTimeout(postUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      referrerPolicy: 'no-referrer',
-      credentials: 'omit',
-      body: JSON.stringify({ messages, model: 'openai', seed: 42 })
-    });
-
-    dbg('POST status:', resp.status);
-
-    if (!resp.ok) {
-      const txt = await resp.text().catch(() => '');
-      throw new Error(`POST failed (status ${resp.status}) ${txt ? '• body: ' + txt.slice(0, 200) : ''}`);
+  // دالة محاولة مع تكرار/backoff
+  async function tryPostWithRetries(maxTries = 2) {
+    const url = 'https://text.pollinations.ai/openai';
+    let attempt = 0, lastErr;
+    while (attempt < maxTries) {
+      attempt++;
+      try {
+        dbg(`POST attempt ${attempt} →`, url);
+        const resp = await fetchWithTimeout(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          referrerPolicy: 'no-referrer',
+          credentials: 'omit',
+          body: JSON.stringify({ messages, model: 'openai', seed: 42 })
+        });
+        dbg('POST status:', resp.status);
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => '');
+          throw new Error(`POST failed (status ${resp.status}) ${txt ? '• body: ' + txt.slice(0, 180) : ''}`);
+        }
+        const data = await resp.json().catch(() => ({}));
+        const out = data?.choices?.[0]?.message?.content;
+        if (!out) throw new Error('POST parse error: empty content');
+        return out;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < maxTries) await wait(600 * Math.pow(2, attempt - 1)); // 600ms, 1200ms
+      }
     }
+    throw lastErr;
+  }
 
-    const data = await resp.json().catch(() => ({}));
-    const aiResponse = data?.choices?.[0]?.message?.content || 'No content.';
+  async function tryGetWithRetries(maxTries = 2) {
+    const lastAssistant = [...chatHistory].reverse().find(m => m.role === 'assistant')?.content;
+    const prompt = [
+      `System: ${systemPrompt}`,
+      lastAssistant ? `Assistant (previous): ${lastAssistant}` : '',
+      `User: ${userMessage}`,
+      `Assistant:`
+    ].filter(Boolean).join('\n\n');
+
+    const baseUrl =
+      `https://text.pollinations.ai/${encodeURIComponent(prompt)}` +
+      `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}`;
+
+    let attempt = 0, lastErr;
+    while (attempt < maxTries) {
+      attempt++;
+      try {
+        dbg(`GET attempt ${attempt} →`, baseUrl);
+        const r = await fetchWithTimeout(baseUrl, {
+          method: 'GET',
+          referrerPolicy: 'no-referrer',
+          credentials: 'omit'
+        });
+        dbg('GET status:', r.status);
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '');
+          throw new Error(`GET failed (status ${r.status}) ${txt ? '• body: ' + txt.slice(0, 180) : ''}`);
+        }
+        const text = await r.text();
+        if (!text) throw new Error('GET parse error: empty text');
+        return text;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < maxTries) await wait(600 * Math.pow(2, attempt - 1));
+      }
+    }
+    throw lastErr;
+  }
+
+  try {
+    // جرّب POST أولاً
+    const aiResponse = await tryPostWithRetries(2);
     chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiResponse });
     removeThinking();
     logChatMessage(userMessage, aiResponse);
     return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
-
   } catch (postErr) {
-    dbg('POST error:', postErr?.name, postErr?.message);
-
-    // 2) Fallback: GET (NO json=true)
+    dbg('POST total failure:', postErr?.message || postErr);
     try {
-      // نبني برومبت GET: system + آخر رد للمساعد (إن وجد) + سؤال المستخدم
-      const lastAssistant = [...chatHistory].reverse().find(m => m.role === 'assistant')?.content;
-      const promptParts = [
-        `System: ${systemPrompt}`,
-        lastAssistant ? `Assistant (previous): ${lastAssistant}` : '',
-        `User: ${userMessage}`,
-        `Assistant:`
-      ].filter(Boolean);
-      const prompt = promptParts.join('\n\n');
-
-      const getUrl =
-        `https://text.pollinations.ai/${encodeURIComponent(prompt)}` +
-        `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}`;
-
-      dbg('GET →', getUrl);
-
-      const r2 = await fetchWithTimeout(getUrl, {
-        method: 'GET',
-        referrerPolicy: 'no-referrer',
-        credentials: 'omit'
-      });
-
-      dbg('GET status:', r2.status);
-
-      if (!r2.ok) {
-        const txt = await r2.text().catch(() => '');
-        throw new Error(`GET failed (status ${r2.status}) ${txt ? '• body: ' + txt.slice(0, 200) : ''}`);
-      }
-
-      const aiText = await r2.text(); // نص عادي بدون json=true
+      // لو فشل POST — جرّب GET
+      const aiText = await tryGetWithRetries(2);
       chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiText });
       removeThinking();
       logChatMessage(userMessage, aiText);
       return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiText}`;
-
     } catch (getErr) {
-      dbg('GET error:', getErr?.name, getErr?.message);
+      dbg('GET total failure:', getErr?.message || getErr);
       removeThinking();
-
-      const postMsg = postErr?.name === 'AbortError' ? 'Timeout on POST (12s).' : (postErr?.message || 'POST failed.');
-      const getMsg  = getErr?.name  === 'AbortError' ? 'Timeout on GET (12s).'  : (getErr?.message  || 'GET failed.');
-      const hint =
-`Hints:
-- افتح الصفحة عبر http(s) وليس file://
-- عطّل Ad-block/VPN مؤقتًا
-- جرّب دومين/استضافة مختلفة أو localhost
-- أو استخدم بروكسي (Cloudflare Worker/Netlify) لتجاوز CORS`;
-
+      const postMsg = postErr?.name === 'AbortError' ? 'Timeout on POST.' : (postErr?.message || 'POST failed.');
+      const getMsg  = getErr?.name  === 'AbortError' ? 'Timeout on GET.'  : (getErr?.message  || 'GET failed.');
       return `<span style="color: #ff6b6b;">Error: AI endpoints unreachable.</span>
 <div style="color:#aaa;white-space:pre-wrap;margin-top:6px">
 POST → ${postMsg}
 GET  → ${getMsg}
 
-${hint}
+Hints:
+- افتح الصفحة عبر http(s) وليس file://
+- عطّل Ad-block/VPN مؤقتًا
+- جرّب دومين/استضافة مختلفة أو localhost
+- أو استخدم بروكسي (Cloudflare Worker/Netlify) لتجاوز CORS
 </div>`;
     }
+  } finally {
+    window.__aiBusy = false;
   }
 }
+
 
 
 
