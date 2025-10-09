@@ -1194,7 +1194,8 @@ System:
         };
 
         // AI Chat function using Pollinations.AI
-        async function sendChatMessage(userMessage) {
+       // AI Chat function using Pollinations.AI (POST → GET fallback)
+async function sendChatMessage(userMessage) {
   const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
 ABOUT BASSAM:
@@ -1250,46 +1251,74 @@ When answering:
 - Explain technical concepts clearly
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
-- Keep responses concise but informative
-- when someone ask you about the ai assistant model which used answer I'm ai trined as an ai assistant for eng. Bassam Aljazzar.
-- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab).`;
+- Keep responses concise but informative`;
 
+  // أضف سطر "AI is thinking..."
+  addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
+
+  // وظيفة صغيرة لإزالة آخر سطر (thinking) بأمان
+  const removeThinking = () => {
+    const outputs = terminalOutput.children;
+    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
+  };
+
+  // خزّن رسالة المستخدم في التاريخ (كما تعمل عندك)
+  chatHistory.push({ role: 'user', content: userMessage });
+
+  // 1) المحاولة الأساسية: POST (OpenAI-compatible)
   try {
-    addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    const resp = await fetch('https://text.pollinations.ai/openai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
+        model: 'openai',
+        seed: 42
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
 
-    // ✅ استخدم GET بدل POST — مع json=true لإرجاع JSON
-    const url =
-      `https://text.pollinations.ai/${encodeURIComponent(userMessage)}` +
-      `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}&json=true`;
+    if (!resp.ok) throw new Error('bad status');
+    const data = await resp.json();
+    const aiResponse = data?.choices?.[0]?.message?.content || 'No content.';
 
-    const resp = await fetch(url, { method: 'GET' });
-    if (!resp.ok) throw new Error('AI text endpoint returned bad status');
+    chatHistory.push({ role: 'assistant', content: aiResponse });
+    removeThinking();
+    logChatMessage(userMessage, aiResponse);
 
-    const raw = await resp.text();
-
-    // أحيانًا يكون JSON فيه {text: "..."}، وأحيانًا نص عادي
-    let aiText = raw;
+    return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
+  } catch (err) {
+    // 2) الخطة البديلة: GET (عادة أسهل من ناحية CORS)
     try {
-      const parsed = JSON.parse(raw);
-      aiText = parsed.text || parsed.response || parsed.output || raw;
-    } catch { /* ignore parse errors */ }
+      const url =
+        `https://text.pollinations.ai/${encodeURIComponent(userMessage)}` +
+        `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}&json=true`;
 
-    // إزالة سطر "thinking..."
-    const outputs = terminalOutput.children;
-    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
+      const r2 = await fetch(url, { method: 'GET' });
+      if (!r2.ok) throw new Error('bad status (GET)');
 
-    // تسجيل الدردشة في Google Sheets (لو مُفعّل)
-    logChatMessage(userMessage, aiText);
+      const raw = await r2.text();
+      let textOut = raw;
+      try {
+        const parsed = JSON.parse(raw);
+        textOut = parsed.text || parsed.response || parsed.output || raw;
+      } catch { /* ignore if not valid JSON */ }
 
-    return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiText}`;
-  } catch (error) {
-    // إزالة سطر "thinking..." عند الخطأ كذلك
-    const outputs = terminalOutput.children;
-    if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
+      chatHistory.push({ role: 'assistant', content: textOut });
+      removeThinking();
+      logChatMessage(userMessage, textOut);
 
-    return `<span style="color: #ff6b6b;">Error: AI text endpoint not reachable. Try again.</span>`;
+      return `<span style="color: #5BCEFA;">🤖 AI:</span> ${textOut}`;
+    } catch (err2) {
+      removeThinking();
+      return `<span style="color: #ff6b6b;">Error: AI endpoint not reachable right now. Please try again.</span>`;
+    }
   }
 }
+
 
         function getDirectory(path) {
             if (path === '~') return fileSystem['~'];
