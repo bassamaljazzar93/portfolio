@@ -1193,8 +1193,8 @@ System:
             }
         };
 
-        // AI Chat function using Pollinations.AI
-       // AI Chat function using Pollinations.AI (POST → GET fallback)
+
+        // AI Chat function using Pollinations.AI (POST → GET fallback + Debug)
 async function sendChatMessage(userMessage) {
   const systemPrompt = `You are Bassam Aljazzar's AI assistant. Your role is to provide information about Bassam and answer questions about mechatronics engineering.
 
@@ -1251,70 +1251,119 @@ When answering:
 - Explain technical concepts clearly
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
-- Keep responses concise but informative`;
+- Keep responses concise but informative
+- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam’s virtual lab)`;
 
-  // أضف سطر "AI is thinking..."
+  // أضف سطر "thinking..."
   addOutput(`<span style="color: #888; font-style: italic;">🤖 AI is thinking...</span>`);
 
-  // وظيفة صغيرة لإزالة آخر سطر (thinking) بأمان
+  // إزالة سطر "thinking..." بأمان
   const removeThinking = () => {
     const outputs = terminalOutput.children;
     if (outputs.length > 0) terminalOutput.removeChild(outputs[outputs.length - 1]);
   };
 
-  // خزّن رسالة المستخدم في التاريخ (كما تعمل عندك)
-  chatHistory.push({ role: 'user', content: userMessage });
-
-  // 1) المحاولة الأساسية: POST (OpenAI-compatible)
-  try {
+  // أداة Timeout
+  const fetchWithTimeout = (url, opts = {}, ms = 12000) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
-    const resp = await fetch('https://text.pollinations.ai/openai', {
+    const id = setTimeout(() => controller.abort(), ms);
+    const merged = { ...opts, signal: controller.signal };
+    return fetch(url, merged).finally(() => clearTimeout(id));
+  };
+
+  // Debug للطباعة في Console
+  const dbg = (...args) => { try { console.log('[AI DEBUG]', ...args); } catch (_) {} };
+
+  // 1) المحاولة الأساسية — POST (OpenAI-compatible)
+  try {
+    const postUrl = 'https://text.pollinations.ai/openai';
+    const messages = [{ role: 'system', content: systemPrompt }, ...chatHistory, { role: 'user', content: userMessage }];
+    const body = JSON.stringify({ messages, model: 'openai', seed: 42 });
+
+    dbg('POST →', postUrl, { bodyPreview: body.slice(0, 200) + '...' });
+
+    const resp = await fetchWithTimeout(postUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
-        model: 'openai',
-        seed: 42
-      }),
-      signal: controller.signal
+      referrerPolicy: 'no-referrer',
+      credentials: 'omit',
+      body
     });
-    clearTimeout(timeoutId);
 
-    if (!resp.ok) throw new Error('bad status');
-    const data = await resp.json();
+    dbg('POST status:', resp.status);
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error(`POST failed (status ${resp.status}) ${txt ? '• body: ' + txt.slice(0, 200) : ''}`);
+    }
+
+    const data = await resp.json().catch(() => ({}));
     const aiResponse = data?.choices?.[0]?.message?.content || 'No content.';
 
-    chatHistory.push({ role: 'assistant', content: aiResponse });
+    chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiResponse });
     removeThinking();
     logChatMessage(userMessage, aiResponse);
 
     return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiResponse}`;
-  } catch (err) {
-    // 2) الخطة البديلة: GET (عادة أسهل من ناحية CORS)
+
+  } catch (postErr) {
+    dbg('POST error:', postErr?.name, postErr?.message);
+
+    // 2) الخطة البديلة — GET (غالبًا أسهل CORS)
     try {
-      const url =
+      const getUrl =
         `https://text.pollinations.ai/${encodeURIComponent(userMessage)}` +
         `?model=openai&seed=42&system=${encodeURIComponent(systemPrompt)}&json=true`;
 
-      const r2 = await fetch(url, { method: 'GET' });
-      if (!r2.ok) throw new Error('bad status (GET)');
+      dbg('GET →', getUrl);
+
+      const r2 = await fetchWithTimeout(getUrl, {
+        method: 'GET',
+        referrerPolicy: 'no-referrer',
+        credentials: 'omit'
+      });
+
+      dbg('GET status:', r2.status);
+
+      if (!r2.ok) {
+        const txt = await r2.text().catch(() => '');
+        throw new Error(`GET failed (status ${r2.status}) ${txt ? '• body: ' + txt.slice(0, 200) : ''}`);
+      }
 
       const raw = await r2.text();
-      let textOut = raw;
+      let aiText = raw;
       try {
         const parsed = JSON.parse(raw);
-        textOut = parsed.text || parsed.response || parsed.output || raw;
-      } catch { /* ignore if not valid JSON */ }
+        aiText = parsed.text || parsed.response || parsed.output || raw;
+      } catch { /* ignore non-JSON */ }
 
-      chatHistory.push({ role: 'assistant', content: textOut });
+      chatHistory.push({ role: 'user', content: userMessage }, { role: 'assistant', content: aiText });
       removeThinking();
-      logChatMessage(userMessage, textOut);
+      logChatMessage(userMessage, aiText);
 
-      return `<span style="color: #5BCEFA;">🤖 AI:</span> ${textOut}`;
-    } catch (err2) {
+      return `<span style="color: #5BCEFA;">🤖 AI:</span> ${aiText}`;
+
+    } catch (getErr) {
+      dbg('GET error:', getErr?.name, getErr?.message);
       removeThinking();
-      return `<span style="color: #ff6b6b;">Error: AI endpoint not reachable right now. Please try again.</span>`;
+
+      const postMsg = postErr?.name === 'AbortError' ? 'Timeout on POST (12s).' : (postErr?.message || 'POST failed.');
+      const getMsg  = getErr?.name  === 'AbortError' ? 'Timeout on GET (12s).'  : (getErr?.message  || 'GET failed.');
+
+      const hint =
+`Hints:
+- افتح الصفحة عبر http(s) وليس file://
+- عطّل Ad-block/VPN مؤقتًا
+- جرّب دومين/استضافة مختلفة أو localhost
+- أو استخدم بروكسي (Cloudflare Worker/Netlify) لتجاوز CORS`;
+
+      return `<span style="color: #ff6b6b;">Error: AI endpoints unreachable.</span>
+<div style="color:#aaa;white-space:pre-wrap;margin-top:6px">
+POST → ${postMsg}
+GET  → ${getMsg}
+
+${hint}
+</div>`;
     }
   }
 }
