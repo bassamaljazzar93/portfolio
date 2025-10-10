@@ -1194,9 +1194,61 @@ System:
         };
 
 
-// AI chat with better debugging and error handling
+// AI chat with Function Calling for Spline control
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 5500;
+
+// 🎬 Spline Control Function
+function triggerPatentView() {
+  try {
+    const splineViewer = document.querySelector('spline-viewer');
+    
+    if (!splineViewer) {
+      console.warn('⚠️ Spline viewer not found');
+      return { success: false, message: 'Spline viewer not available' };
+    }
+    
+    console.log('🎬 Triggering patent view in 3D lab...');
+    
+    // جرّب الطرق المختلفة للتفاعل مع Spline
+    try {
+      // Method 1: Direct event emission
+      if (typeof splineViewer.emitEvent === 'function') {
+        splineViewer.emitEvent('mouseDown', 'RedMask');
+      }
+      
+      // Method 2: Access through runtime (يشتغل بعد ما يحمّل)
+      const tryRuntime = () => {
+        if (splineViewer.runtime) {
+          const mask = splineViewer.runtime.findObjectByName('RedMask') || 
+                       splineViewer.runtime.findObjectByName('patent_mask');
+          if (mask) {
+            splineViewer.runtime.emitEvent('mouseDown', mask);
+          }
+        }
+      };
+      
+      // جرّب فوراً وبعد delay
+      tryRuntime();
+      setTimeout(tryRuntime, 100);
+      
+    } catch (e) {
+      console.log('Spline interaction attempt:', e.message);
+    }
+    
+    // Visual feedback في الـ terminal
+    addOutput(`<span style="color:#5BCEFA;">🎭 ← انظر للمختبر الافتراضي أعلاه! تم تفعيل عرض البراءة.</span>`);
+    
+    return { 
+      success: true, 
+      message: 'Patent view activated in 3D lab. User can click the red mask above the mannequin to view the patent document.' 
+    };
+    
+  } catch (error) {
+    console.error('❌ Spline control error:', error);
+    return { success: false, message: error.message };
+  }
+}
 
 async function sendChatMessage(userMessage) {
   console.log('🚀 Starting chat request...');
@@ -1212,7 +1264,7 @@ async function sendChatMessage(userMessage) {
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     const waitTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000);
     console.log(`⚠️ Rate limit triggered. Wait ${waitTime}s`);
-    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية (حماية من الحجب)</span>`;
+    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية</span>`;
   }
 
   window.__aiBusy = true;
@@ -1242,7 +1294,7 @@ KEY PROJECTS:
 1. Bu Saif Humanoid Robot (2020-2021): Python-based robot for mini-mental state examination (MMSE) for elderly patients with cognitive functions, in collaboration with UAE University and Dubai Health Authority
 2. Bu Saif Humanoid Robot (2019): Arabic-speaking humanoid robot presented at GITEX 2019 Exhibition in Dubai
 3. Meta Touch Project (2020): Touchless elevator button system to prevent COVID-19 transmission, now in commercial production
-4. US Patent 11573635: Contributed to developing face mask with EMG sensors for communication
+4. US Patent 11573635: Contributed to developing face mask with EMG sensors for communication. The patent document can be viewed by clicking the red mask in the 3D virtual lab.
 5. Shrimp Rover Robot (2016): Graduation project with six-wheeled design for obstacle navigation
 
 TECHNICAL SKILLS:
@@ -1274,7 +1326,7 @@ When answering:
 - Highlight his projects and achievements
 - If asked about topics outside Bassam's portfolio or mechatronics, politely redirect to relevant topics
 - Keep responses concise but informative
-- If anyone asks about the patent or wants the document, tell them to click on the red mask above the mannequin (the human model in Bassam's virtual lab)`;
+- When users ask about the patent (براءة الاختراع, patent document, US11573635, face mask patent), use the show_patent_in_3d_lab function to highlight it in the virtual lab`;
 
   const thinkingDiv = document.createElement('div');
   thinkingDiv.className = 'output-line';
@@ -1291,12 +1343,28 @@ When answering:
 
   console.log(`📤 Sending ${messages.length} messages to API`);
 
+  // 🔧 Tools definition
+  const tools = [
+    {
+      type: "function",
+      function: {
+        name: "show_patent_in_3d_lab",
+        description: "Highlights and activates the patent document view in the 3D virtual lab. Use this when user asks about the patent, wants to see the patent document, or asks about US Patent 11573635 or the face mask patent.",
+        parameters: {
+          type: "object",
+          properties: {},
+          required: []
+        }
+      }
+    }
+  ];
+
   async function tryAPI(attempt = 1) {
     console.log(`🔄 Attempt ${attempt}/2`);
     
-    // POST attempt
+    // POST attempt with Function Calling
     try {
-      console.log('📮 Trying POST...');
+      console.log('📮 Trying POST with Function Calling...');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
       
@@ -1307,7 +1375,9 @@ When answering:
           messages: messages,
           model: 'openai',
           seed: 42,
-          referrer: 'bassamaljazzar93.github.io'
+          referrer: 'bassamaljazzar93.github.io',
+          tools: tools,
+          tool_choice: 'auto' // الـ AI يقرر متى يستخدم الـ function
         }),
         signal: controller.signal
       });
@@ -1318,7 +1388,58 @@ When answering:
       
       if (response.ok) {
         const data = await response.json();
-        const text = data?.choices?.[0]?.message?.content;
+        const message = data?.choices?.[0]?.message;
+        
+        if (!message) {
+          throw new Error('No message in response');
+        }
+        
+        // 🎯 فحص إذا الـ AI استدعى function
+        if (message.tool_calls && message.tool_calls.length > 0) {
+          console.log('🔧 AI requested function call!');
+          
+          const toolCall = message.tool_calls[0];
+          console.log(`📞 Calling: ${toolCall.function.name}`);
+          
+          if (toolCall.function.name === 'show_patent_in_3d_lab') {
+            // 🎬 شغّل الـ function
+            const result = triggerPatentView();
+            console.log('✅ Function executed:', result);
+            
+            // 🔄 أرجع الـ result للـ AI عشان يكمل الرد
+            messages.push(message); // رسالة الـ AI مع tool_call
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              name: toolCall.function.name,
+              content: JSON.stringify(result)
+            });
+            
+            // 🔁 طلب ثاني للحصول على الرد النهائي
+            const secondResponse = await fetch('https://text.pollinations.ai/openai', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: messages,
+                model: 'openai',
+                seed: 42,
+                referrer: 'bassamaljazzar93.github.io'
+              })
+            });
+            
+            if (secondResponse.ok) {
+              const finalData = await secondResponse.json();
+              const finalText = finalData?.choices?.[0]?.message?.content;
+              if (finalText) {
+                console.log('✅ POST Success with Function!');
+                return finalText;
+              }
+            }
+          }
+        }
+        
+        // رد عادي بدون function call
+        const text = message.content;
         if (text) {
           console.log('✅ POST Success!');
           return text;
@@ -1330,7 +1451,6 @@ When answering:
         throw new Error('RATE_LIMIT');
       }
       
-      // Log response for debugging
       const errorText = await response.text().catch(() => 'no body');
       console.log('❌ POST failed:', errorText);
       
@@ -1339,7 +1459,7 @@ When answering:
       console.log('❌ POST error:', e.message);
     }
 
-    // GET fallback
+    // GET fallback (بدون function calling)
     try {
       console.log('📮 Trying GET fallback...');
       const lastAssistant = [...recentHistory]
@@ -1365,6 +1485,14 @@ When answering:
         const text = await response.text();
         if (text) {
           console.log('✅ GET Success!');
+          
+          // 🔍 Keyword detection كـ fallback
+          const patentKeywords = ['patent', 'براءة', '11573635', 'mask', 'قناع'];
+          if (patentKeywords.some(kw => text.toLowerCase().includes(kw) || userMessage.toLowerCase().includes(kw))) {
+            console.log('🎯 Patent keyword detected in fallback');
+            setTimeout(() => triggerPatentView(), 500);
+          }
+          
           return text;
         }
       }
@@ -1410,10 +1538,10 @@ When answering:
     console.error('💥 Final error:', error.message);
     
     if (error.message === 'RATE_LIMIT') {
-      return `<span style="color:#ffa500;">⚠️ تم تجاوز الحد المسموح. يرجى الانتظار 6 ثواني بين الرسائل</small></span>`;
+      return `<span style="color:#ffa500;">⚠️ تم تجاوز الحد المسموح. انتظر 6 ثواني</span>`;
     }
     
-    return `<span style="color:#ff6b6b;">❌ فشل الاتصال بعد محاولتين. جرّب مرة ثانية بعد دقيقة </small></span>`;
+    return `<span style="color:#ff6b6b;">❌ فشل الاتصال. جرّب مرة ثانية</span>`;
   } finally {
     window.__aiBusy = false;
   }
