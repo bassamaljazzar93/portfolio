@@ -1194,7 +1194,7 @@ System:
         };
 
 
-// AI chat - GET endpoint (solves token limit issue)
+// AI chat with better debugging and error handling
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 5500;
 
@@ -1211,7 +1211,8 @@ async function sendChatMessage(userMessage) {
   
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     const waitTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000);
-    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية</span>`;
+    console.log(`⚠️ Rate limit triggered. Wait ${waitTime}s`);
+    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية (حماية من الحجب)</span>`;
   }
 
   window.__aiBusy = true;
@@ -1281,51 +1282,114 @@ When answering:
   terminalOutput.appendChild(thinkingDiv);
   terminalOutput.scrollTop = terminalOutput.scrollHeight;
 
-  try {
-    // آخر رسالة من الـ AI فقط (للسياق)
-    const recentMessages = chatHistory.slice(-2); // آخر تبادل واحد بس
-    let contextPrompt = '';
+  const recentHistory = chatHistory.slice(-8);
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    ...recentHistory,
+    { role: 'user', content: userMessage }
+  ];
+
+  console.log(`📤 Sending ${messages.length} messages to API`);
+
+  async function tryAPI(attempt = 1) {
+    console.log(`🔄 Attempt ${attempt}/2`);
     
-    if (recentMessages.length > 0) {
-      const lastAssistant = recentMessages.find(m => m.role === 'assistant')?.content;
-      if (lastAssistant) {
-        // خذ أول 80 حرف بس
-        contextPrompt = `Previous: ${lastAssistant.substring(0, 80)}\n\n`;
+    // POST attempt
+    try {
+      console.log('📮 Trying POST...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const response = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messages,
+          model: 'openai',
+          seed: 42,
+          referrer: 'bassamaljazzar93.github.io'
+        }),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      console.log(`📥 POST Response: ${response.status} ${response.statusText}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content;
+        if (text) {
+          console.log('✅ POST Success!');
+          return text;
+        }
       }
+      
+      if (response.status === 429) {
+        console.log('🚫 Rate limit hit (429)');
+        throw new Error('RATE_LIMIT');
+      }
+      
+      // Log response for debugging
+      const errorText = await response.text().catch(() => 'no body');
+      console.log('❌ POST failed:', errorText);
+      
+    } catch (e) {
+      if (e.message === 'RATE_LIMIT') throw e;
+      console.log('❌ POST error:', e.message);
+    }
+
+    // GET fallback
+    try {
+      console.log('📮 Trying GET fallback...');
+      const lastAssistant = [...recentHistory]
+        .reverse()
+        .find(m => m.role === 'assistant')?.content || '';
+      
+      const prompt = [
+        lastAssistant ? `Previous: ${lastAssistant.substring(0, 150)}` : '',
+        `User: ${userMessage}`
+      ].filter(Boolean).join('\n\n');
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      const url = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=42&referrer=bassamaljazzar93.github.io&system=${encodeURIComponent(systemPrompt)}`;
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      console.log(`📥 GET Response: ${response.status} ${response.statusText}`);
+      
+      if (response.ok) {
+        const text = await response.text();
+        if (text) {
+          console.log('✅ GET Success!');
+          return text;
+        }
+      }
+      
+      if (response.status === 429) {
+        console.log('🚫 Rate limit hit (429)');
+        throw new Error('RATE_LIMIT');
+      }
+      
+    } catch (e) {
+      if (e.message === 'RATE_LIMIT') throw e;
+      console.log('❌ GET error:', e.message);
+    }
+
+    if (attempt < 2) {
+      console.log('⏳ Waiting 6s before retry...');
+      await new Promise(r => setTimeout(r, 6000));
+      return tryAPI(attempt + 1);
     }
     
-    const fullPrompt = contextPrompt + `User: ${userMessage}`;
-    
-    const params = new URLSearchParams({
-      model: 'openai',
-      seed: '42',
-      referrer: 'bassamaljazzar93.github.io',
-      system: systemPrompt
-    });
-    
-    const url = `https://text.pollinations.ai/${encodeURIComponent(fullPrompt)}?${params}`;
-    
-    console.log('📡 GET request...');
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    
-    console.log(`📥 ${response.status} ${response.statusText}`);
-    
-    if (!response.ok) {
-      if (response.status === 429) throw new Error('RATE_LIMIT');
-      throw new Error(`HTTP ${response.status}`);
-    }
-    
-    const text = await response.text();
-    
-    if (!text || text.trim().length === 0) {
-      throw new Error('Empty response');
-    }
-    
+    throw new Error('ALL_FAILED');
+  }
+
+  try {
+    const text = await tryAPI();
     thinkingDiv.remove();
     
     chatHistory.push(
@@ -1333,29 +1397,23 @@ When answering:
       { role: 'assistant', content: text }
     );
     
-    // احتفظ بآخر 8 رسائل فقط
-    if (chatHistory.length > 8) {
-      chatHistory = chatHistory.slice(-8);
+    if (chatHistory.length > 16) {
+      chatHistory = chatHistory.slice(-16);
     }
     
     logChatMessage(userMessage, text);
-    console.log('✅ Success!');
-    
+    console.log('✅ Chat completed successfully');
     return `<span style="color:#5BCEFA;">🤖 AI:</span> ${text}`;
     
   } catch (error) {
     thinkingDiv.remove();
-    console.error('❌', error.message);
-    
-    if (error.name === 'AbortError') {
-      return `<span style="color:#ffa500;">⏱️ Timeout. حاول مرة ثانية.</span>`;
-    }
+    console.error('💥 Final error:', error.message);
     
     if (error.message === 'RATE_LIMIT') {
-      return `<span style="color:#ffa500;">⚠️ Rate limit. انتظر 6 ثواني.</span>`;
+      return `<span style="color:#ffa500;">⚠️ تم تجاوز الحد المسموح. يرجى الانتظار 6 ثواني بين الرسائل</small></span>`;
     }
     
-    return `<span style="color:#ff6b6b;">❌ خطأ: ${error.message}</span>`;
+    return `<span style="color:#ff6b6b;">❌ فشل الاتصال بعد محاولتين. جرّب مرة ثانية بعد دقيقة </small></span>`;
   } finally {
     window.__aiBusy = false;
   }
