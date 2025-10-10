@@ -1194,20 +1194,25 @@ System:
         };
 
 
-// AI chat - configured for bassamaljazzar93.github.io
+// AI chat with better debugging and error handling
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 5500; // 5.5 seconds for Seed tier
+const MIN_REQUEST_INTERVAL = 5500;
 
 async function sendChatMessage(userMessage) {
+  console.log('🚀 Starting chat request...');
+  
   if (window.__aiBusy) {
     return `<span style="color:#ffbd2e;">⏳ انتظر قليلاً...</span>`;
   }
 
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
+  console.log(`⏱️ Time since last request: ${timeSinceLastRequest}ms`);
+  
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     const waitTime = Math.ceil((MIN_REQUEST_INTERVAL - timeSinceLastRequest) / 1000);
-    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية</span>`;
+    console.log(`⚠️ Rate limit triggered. Wait ${waitTime}s`);
+    return `<span style="color:#ffa500;">⏱️ انتظر ${waitTime} ثانية قبل الرسالة التالية (حماية من الحجب)</span>`;
   }
 
   window.__aiBusy = true;
@@ -1284,8 +1289,14 @@ When answering:
     { role: 'user', content: userMessage }
   ];
 
+  console.log(`📤 Sending ${messages.length} messages to API`);
+
   async function tryAPI(attempt = 1) {
+    console.log(`🔄 Attempt ${attempt}/2`);
+    
+    // POST attempt
     try {
+      console.log('📮 Trying POST...');
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
       
@@ -1303,21 +1314,34 @@ When answering:
       
       clearTimeout(timeoutId);
       
+      console.log(`📥 POST Response: ${response.status} ${response.statusText}`);
+      
       if (response.ok) {
         const data = await response.json();
         const text = data?.choices?.[0]?.message?.content;
-        if (text) return text;
+        if (text) {
+          console.log('✅ POST Success!');
+          return text;
+        }
       }
       
-      if (response.status === 429) throw new Error('RATE_LIMIT');
+      if (response.status === 429) {
+        console.log('🚫 Rate limit hit (429)');
+        throw new Error('RATE_LIMIT');
+      }
+      
+      // Log response for debugging
+      const errorText = await response.text().catch(() => 'no body');
+      console.log('❌ POST failed:', errorText);
       
     } catch (e) {
       if (e.message === 'RATE_LIMIT') throw e;
-      console.log(`POST attempt ${attempt}:`, e.message);
+      console.log('❌ POST error:', e.message);
     }
 
     // GET fallback
     try {
+      console.log('📮 Trying GET fallback...');
       const lastAssistant = [...recentHistory]
         .reverse()
         .find(m => m.role === 'assistant')?.content || '';
@@ -1335,19 +1359,28 @@ When answering:
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       
+      console.log(`📥 GET Response: ${response.status} ${response.statusText}`);
+      
       if (response.ok) {
         const text = await response.text();
-        if (text) return text;
+        if (text) {
+          console.log('✅ GET Success!');
+          return text;
+        }
       }
       
-      if (response.status === 429) throw new Error('RATE_LIMIT');
+      if (response.status === 429) {
+        console.log('🚫 Rate limit hit (429)');
+        throw new Error('RATE_LIMIT');
+      }
       
     } catch (e) {
       if (e.message === 'RATE_LIMIT') throw e;
-      console.log(`GET attempt ${attempt}:`, e.message);
+      console.log('❌ GET error:', e.message);
     }
 
     if (attempt < 2) {
+      console.log('⏳ Waiting 6s before retry...');
       await new Promise(r => setTimeout(r, 6000));
       return tryAPI(attempt + 1);
     }
@@ -1369,21 +1402,22 @@ When answering:
     }
     
     logChatMessage(userMessage, text);
+    console.log('✅ Chat completed successfully');
     return `<span style="color:#5BCEFA;">🤖 AI:</span> ${text}`;
     
   } catch (error) {
     thinkingDiv.remove();
+    console.error('💥 Final error:', error.message);
     
     if (error.message === 'RATE_LIMIT') {
-      return `<span style="color:#ffa500;">⚠️ تم تجاوز الحد المسموح (5 seconds). انتظر قليلاً.</span>`;
+      return `<span style="color:#ffa500;">⚠️ تم تجاوز الحد المسموح. يرجى الانتظار 6 ثواني بين الرسائل.<br><small>نصيحة: سجّل موقعك على <a href="https://auth.pollinations.ai" target="_blank" style="color:#5BCEFA;">auth.pollinations.ai</a> لحدود أفضل!</small></span>`;
     }
     
-    return `<span style="color:#ff6b6b;">❌ فشل الاتصال. حاول مرة ثانية.</span>`;
+    return `<span style="color:#ff6b6b;">❌ فشل الاتصال بعد محاولتين. جرّب مرة ثانية بعد دقيقة.<br><small>تأكد من تسجيل الموقع على <a href="https://auth.pollinations.ai" target="_blank" style="color:#5BCEFA;">auth.pollinations.ai</a></small></span>`;
   } finally {
     window.__aiBusy = false;
   }
 }
-
         function getDirectory(path) {
             if (path === '~') return fileSystem['~'];
             
